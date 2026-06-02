@@ -11,8 +11,22 @@ const { noCache } = require('./middleware/cache');
 const { PUBLIC_DIR } = require('./config');
 
 const { PORT = 8080 } = process.env;
+const { RECIPES_JSON_DIR } = require('./config');
+const fs = require('fs');
 
 migrate();
+
+// Auto-migrate from JSON files if DB is empty and JSON snapshots exist
+(function autoMigrateIfNeeded() {
+  if (listRecipes().length === 0 && fs.existsSync(RECIPES_JSON_DIR)) {
+    const jsonFiles = fs.readdirSync(RECIPES_JSON_DIR)
+      .filter(f => f.endsWith('.json') && f !== 'recipe-index.json');
+    if (jsonFiles.length > 0) {
+      console.log(`DB empty — auto-migrating ${jsonFiles.length} JSON recipes…`);
+      require('./scripts/migrate-json-to-sqlite');
+    }
+  }
+})();
 
 // Auto-rerender when template changes
 (function checkTemplateHash() {
@@ -88,3 +102,12 @@ app.use(legacy);
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Kokebok server listening on port ${PORT}`);
 });
+
+// Graceful shutdown
+function shutdown() {
+  const { getDb } = require('./db/index');
+  try { getDb().close(); } catch {}
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
