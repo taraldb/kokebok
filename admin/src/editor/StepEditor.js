@@ -15,7 +15,6 @@ export class StepEditor {
       element: container,
       extensions: [
         StarterKit.configure({
-          // Disable extensions we don't need in step text
           heading: false,
           blockquote: false,
           bulletList: false,
@@ -25,14 +24,11 @@ export class StepEditor {
           horizontalRule: false,
           strike: false,
         }),
-        IngredientRefNode,
+        IngredientRefNode.configure({ ingredients }),
       ],
       content: initialDoc || { type: 'doc', content: [{ type: 'paragraph' }] },
       onUpdate: onUpdate ? ({ editor }) => onUpdate(editor.getJSON()) : undefined,
     })
-
-    // Store ingredients in the extension's storage
-    this.setIngredients(ingredients)
   }
 
   setIngredients(ingredients) {

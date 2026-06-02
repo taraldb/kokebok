@@ -6,8 +6,12 @@ export const IngredientRefNode = Node.create({
   inline: true,
   atom: true,
 
-  addStorage() {
+  addOptions() {
     return { ingredients: [] }
+  },
+
+  addStorage() {
+    return { ingredients: this.options.ingredients }
   },
 
   addAttributes() {
