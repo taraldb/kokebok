@@ -41,6 +41,21 @@ const adminDistDir = path.join(__dirname, '../admin/dist');
 app.use('/admin', express.static(adminDistDir, { setHeaders: noCache }));
 
 // ── DB-backed recipe JSON (CORS, no-cache) ────────────────────────────────────
+
+// recipe-index.json served from prerendered static file
+app.get('/recipes/recipe-index.json', (req, res) => {
+  const { RECIPES_JSON_DIR } = require('./config');
+  const indexPath = require('path').join(__dirname, '../public/recipes/recipe-index.json');
+  const fs = require('fs');
+  if (!fs.existsSync(indexPath)) {
+    return res.status(404).json({ error: 'not found' });
+  }
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.send(fs.readFileSync(indexPath));
+});
+
 app.get('/recipes/:id.json', (req, res) => {
   const r = getRecipe(req.params.id);
   if (!r) return res.status(404).json({ error: 'not found' });

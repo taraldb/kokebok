@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { getRecipe, listRecipes } = require('../db/recipes');
 const { renderRecipePage } = require('./template');
+const { renderIndexPage } = require('./index-template');
 const { PUBLIC_DIR } = require('../config');
 
 const R_DIR = path.join(PUBLIC_DIR, 'r');
@@ -30,7 +31,7 @@ function prerenderRecipe(id) {
 }
 
 /**
- * Prerender all recipes.
+ * Prerender all recipes + index page + recipe-index.json.
  * @returns {{ count: number, ms: number }}
  */
 function prerenderAll() {
@@ -40,7 +41,24 @@ function prerenderAll() {
   for (const { id } of recipes) {
     prerenderRecipe(id);
   }
+  prerenderIndex(recipes);
   return { count: recipes.length, ms: Date.now() - t0 };
+}
+
+/**
+ * Prerender public/index.html (SSR grid) and public/recipes/recipe-index.json.
+ * @param {Array} recipes
+ */
+function prerenderIndex(recipes) {
+  const html = renderIndexPage(recipes);
+  atomicWrite(path.join(PUBLIC_DIR, 'index.html'), html);
+
+  const recipesDir = path.join(PUBLIC_DIR, 'recipes');
+  if (!fs.existsSync(recipesDir)) fs.mkdirSync(recipesDir, { recursive: true });
+  atomicWrite(
+    path.join(recipesDir, 'recipe-index.json'),
+    JSON.stringify(recipes, null, 2)
+  );
 }
 
 /**
@@ -60,6 +78,7 @@ function computeTemplateHash() {
   const files = [
     path.join(__dirname, 'template.js'),
     path.join(__dirname, 'doc-to-html.js'),
+    path.join(__dirname, 'index-template.js'),
     path.join(__dirname, '../lib/format-amount.js'),
   ];
   const hash = crypto.createHash('sha256');
@@ -69,4 +88,4 @@ function computeTemplateHash() {
   return hash.digest('hex');
 }
 
-module.exports = { prerenderRecipe, prerenderAll, removePrerender, computeTemplateHash };
+module.exports = { prerenderRecipe, prerenderAll, prerenderIndex, removePrerender, computeTemplateHash };
