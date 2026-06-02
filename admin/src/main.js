@@ -2,6 +2,7 @@ import { StepEditor } from './editor/StepEditor.js'
 import { wireDropTarget } from './editor/dragHandlers.js'
 import { FactorPopover } from './components/FactorPopover.js'
 import { IngredientSidebar } from './components/IngredientSidebar.js'
+import { RawModeToggle } from './components/RawModeToggle.js'
 
 const CATEGORIES = ['surdeig','brød','middag','dessert','suppe','kaker','frokost','fisk','vegetar','snacks']
 
@@ -137,6 +138,14 @@ function renderForm(r) {
     document.getElementById('tip-rows').insertAdjacentHTML('beforeend', tipRowHtml()))
   document.getElementById('save-btn').addEventListener('click', save)
   document.getElementById('del-btn')?.addEventListener('click', () => del(r.id))
+
+  // Raw YAML toggle
+  const rawContainer = document.createElement('div')
+  rawContainer.id = 'raw-toggle-container'
+  document.getElementById('form-area').appendChild(rawContainer)
+  new RawModeToggle(rawContainer, r.id || null, {
+    onSaved: () => r.id && loadRecipe(r.id),
+  })
 }
 
 function getCurrentIngredients() {

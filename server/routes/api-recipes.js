@@ -4,6 +4,7 @@ const { nanoid } = require('nanoid');
 const { listRecipes, getRecipe, upsertRecipe, deleteRecipe } = require('../db/recipes');
 const { prerenderRecipe, removePrerender } = require('../prerender/index');
 const { writeJsonSnapshot } = require('../lib/json-snapshot');
+const { recipeToYaml, yamlToRecipe } = require('../lib/recipe-yaml');
 
 const router = express.Router();
 
@@ -86,6 +87,29 @@ router.delete('/:id', (req, res) => {
   if (!getRecipe(req.params.id)) return res.status(404).json({ error: 'not found' });
   deleteRecipe(req.params.id);
   removePrerender(req.params.id);
+  res.json({ ok: true });
+});
+
+// GET /api/recipes/:id/yaml — fetch recipe as YAML
+router.get('/:id/yaml', (req, res) => {
+  const r = getRecipe(req.params.id);
+  if (!r) return res.status(404).json({ error: 'not found' });
+  res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+  res.send(recipeToYaml(r));
+});
+
+// PUT /api/recipes/:id/yaml — save recipe from YAML body
+router.put('/:id/yaml', express.text({ type: ['text/yaml', 'text/plain'], limit: '5mb' }), (req, res) => {
+  let recipe;
+  try {
+    recipe = yamlToRecipe(req.body);
+  } catch (e) {
+    return res.status(400).json({ error: `Invalid YAML: ${e.message}` });
+  }
+  recipe.id = req.params.id;
+  upsertRecipe(recipe);
+  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
+  prerenderRecipe(recipe.id);
   res.json({ ok: true });
 });
 
