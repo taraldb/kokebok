@@ -1,0 +1,1 @@
+-- Schema placeholder — filled in Milestone 2
