@@ -34,6 +34,9 @@ COPY --from=builder /app/admin/dist ./admin/dist/
 # Copy public assets (CSS, theme.js, etc.)
 COPY public/ ./public/
 
+# Seed recipes for auto-migration on first boot (used when /data/recipes is absent)
+COPY recipes/ ./recipes/
+
 # Copy package.json (needed for npm scripts and metadata)
 COPY package.json ./
 
