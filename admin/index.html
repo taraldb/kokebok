@@ -196,8 +196,9 @@
   }
 
   function ingredientRow(amount='', unit='', name='') {
+    const amtDisplay = typeof amount === 'number' ? displayFrac(amount) : amount;
     return `<div class="dynamic-row">
-      <input class="amount-input" type="number" placeholder="700" value="${amount}" data-ing-amount />
+      <input class="amount-input" type="text" placeholder="700" value="${amtDisplay}" data-ing-amount />
       <input class="unit-input"  placeholder="ml"  value="${esc(unit)}" data-ing-unit />
       <input placeholder="Ingrediensnavn"          value="${esc(name)}" data-ing-name />
       <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
@@ -250,7 +251,7 @@
         min:  parseFloat(document.getElementById('f-srv-min').value)  || 1
       },
       ingredients: [...document.querySelectorAll('[data-ing-amount]')].map(el => ({
-        amount: parseFloat(el.value) || 0,
+        amount: parseFrac(el.value),
         unit:   el.closest('.dynamic-row').querySelector('[data-ing-unit]').value.trim(),
         name:   el.closest('.dynamic-row').querySelector('[data-ing-name]').value.trim()
       })).filter(i => i.name),
@@ -299,6 +300,22 @@
     el.className = 'status ' + (ok ? 'ok' : 'err');
   }
 
+  function parseFrac(v) {
+    const s = String(v||'').trim();
+    if (s.includes('/')) { const [n,d]=s.split('/').map(Number); return isNaN(n)||isNaN(d)||d===0 ? 0 : n/d; }
+    return parseFloat(s) || 0;
+  }
+  const _FRACS = [[1/8,'1/8'],[1/4,'1/4'],[1/3,'1/3'],[3/8,'3/8'],[1/2,'1/2'],[5/8,'5/8'],[2/3,'2/3'],[3/4,'3/4'],[7/8,'7/8']];
+  function displayFrac(val) {
+    if (!val) return '';
+    const whole = Math.floor(val), frac = val - whole;
+    if (frac < 0.04) return String(whole);
+    if (frac > 0.96) return String(whole + 1);
+    let best = null, bestDiff = 0.06;
+    for (const [f, s] of _FRACS) { const d = Math.abs(frac - f); if (d < bestDiff) { bestDiff = d; best = s; } }
+    if (!best) return String(val);
+    return whole > 0 ? `${whole} ${best}` : best;
+  }
   function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
