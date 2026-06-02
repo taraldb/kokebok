@@ -42,6 +42,8 @@ function genId() { return Math.random().toString(36).slice(2,10) + Math.random()
 async function loadList() {
   const res = await fetch('/api/recipes')
   recipes = await res.json()
+
+  // Desktop sidebar list
   const ul = document.getElementById('recipe-list')
   ul.innerHTML = recipes.map(r => `
     <li class="recipe-item ${editingId === r.id ? 'active' : ''}" data-id="${esc(r.id)}">${esc(r.title)}</li>
@@ -49,6 +51,13 @@ async function loadList() {
   ul.querySelectorAll('.recipe-item').forEach(li => {
     li.addEventListener('click', () => loadRecipe(li.dataset.id))
   })
+
+  // Mobile select
+  const sel = document.getElementById('mobile-recipe-select')
+  if (sel) {
+    sel.innerHTML = '<option value="">— Velg oppskrift —</option>' +
+      recipes.map(r => `<option value="${esc(r.id)}" ${editingId === r.id ? 'selected' : ''}>${esc(r.title)}</option>`).join('')
+  }
 }
 
 async function loadRecipe(id) {
@@ -391,13 +400,23 @@ function showStatus(msg, ok) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-document.getElementById('new-btn').addEventListener('click', () => {
+function newRecipe() {
   editingId = null
   destroyEditors()
   renderForm({})
   document.querySelectorAll('.recipe-item').forEach(el => el.classList.remove('active'))
-})
+  const sel = document.getElementById('mobile-recipe-select')
+  if (sel) sel.value = ''
+}
 
+document.getElementById('new-btn').addEventListener('click', newRecipe)
 document.getElementById('paste-btn').addEventListener('click', () => pasteRawModal.show())
+
+// Mobile bar
+document.getElementById('mobile-recipe-select')?.addEventListener('change', e => {
+  if (e.target.value) loadRecipe(e.target.value)
+})
+document.getElementById('mobile-new-btn')?.addEventListener('click', newRecipe)
+document.getElementById('mobile-paste-btn')?.addEventListener('click', () => pasteRawModal.show())
 
 loadList()

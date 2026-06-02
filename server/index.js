@@ -85,7 +85,7 @@ app.get('/recipes/:id', (req, res) => {
 });
 
 // ── Prerendered recipe pages ──────────────────────────────────────────────────
-app.use('/r', express.static(path.join(PUBLIC_DIR, 'r'), { setHeaders: noCache }));
+app.use('/r', express.static(path.join(PUBLIC_DIR, 'r'), { setHeaders: noCache, extensions: ['html'] }));
 
 // ── Assets (long cache) ───────────────────────────────────────────────────────
 app.use('/assets', express.static(path.join(PUBLIC_DIR, 'assets'), {
