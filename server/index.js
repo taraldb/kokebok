@@ -18,13 +18,18 @@ migrate();
 
 // Auto-migrate from JSON files if DB is empty and JSON snapshots exist
 (function autoMigrateIfNeeded() {
-  if (listRecipes().length === 0 && fs.existsSync(RECIPES_JSON_DIR)) {
-    const jsonFiles = fs.readdirSync(RECIPES_JSON_DIR)
+  const ROOT = path.join(__dirname, '..');
+  const candidateDirs = [RECIPES_JSON_DIR, path.join(ROOT, 'recipes')];
+  const jsonDir = candidateDirs.find(d => {
+    if (!fs.existsSync(d)) return false;
+    return fs.readdirSync(d).some(f => f.endsWith('.json') && f !== 'recipe-index.json');
+  });
+  if (listRecipes().length === 0 && jsonDir) {
+    const jsonFiles = fs.readdirSync(jsonDir)
       .filter(f => f.endsWith('.json') && f !== 'recipe-index.json');
-    if (jsonFiles.length > 0) {
-      console.log(`DB empty — auto-migrating ${jsonFiles.length} JSON recipes…`);
-      require('./scripts/migrate-json-to-sqlite');
-    }
+    console.log(`DB empty — auto-migrating ${jsonFiles.length} JSON recipes from ${jsonDir}…`);
+    process.env.RECIPES_DIR = jsonDir;
+    require('./scripts/migrate-json-to-sqlite');
   }
 })();
 
