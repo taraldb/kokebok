@@ -1,10 +1,15 @@
 import { StepEditor } from './editor/StepEditor.js'
+import { wireDropTarget } from './editor/dragHandlers.js'
+import { FactorPopover } from './components/FactorPopover.js'
+import { IngredientSidebar } from './components/IngredientSidebar.js'
 
 const CATEGORIES = ['surdeig','brød','middag','dessert','suppe','kaker','frokost','fisk','vegetar','snacks']
 
 let recipes = []
 let editingId = null
 let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
+let ingredientSidebar = null
+const factorPopover = new FactorPopover()
 
 // ── Util ──────────────────────────────────────────────────────────────────────
 
@@ -107,6 +112,14 @@ function renderForm(r) {
 
   const ingredients = r.ingredients || []
 
+  // Render ingredient sidebar
+  const sidebarContainer = document.createElement('div')
+  sidebarContainer.id = 'ing-sidebar'
+  sidebarContainer.className = 'ing-sidebar-panel'
+  const formGrid = document.querySelector('.form-grid')
+  if (formGrid) formGrid.insertAdjacentElement('beforebegin', sidebarContainer)
+  ingredientSidebar = new IngredientSidebar(sidebarContainer, ingredients)
+
   // Render TipTap step editors
   const stepRowsEl = document.getElementById('step-rows')
   ;(r.steps || []).forEach((step, i) => {
@@ -168,20 +181,74 @@ function appendStepEditor(container, step, ingredients) {
   const editor = new StepEditor(mountEl, {
     ingredients,
     initialDoc: step?.content_doc || null,
+    onUpdate: () => recomputeSums(),
   })
 
-  stepEditors.push({
+  // Wire drop target for ingredient sidebar drag
+  wireDropTarget(mountEl, editor, {
+    onInsert: () => recomputeSums(),
+  })
+
+  // Click on ing-chip → factor popover
+  mountEl.addEventListener('click', e => {
+    const chip = e.target.closest('.ing-chip')
+    if (!chip) return
+    const pm = editor.editor.view
+    // Find the node position by traversing the document
+    let foundPos = null
+    pm.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'ingredientRef' && pm.nodeDOM(pos) === chip) {
+        foundPos = pos
+        return false
+      }
+    })
+    if (foundPos === null) return
+    const node = pm.state.doc.nodeAt(foundPos)
+    if (!node) return
+    const { ingredientId, factor } = node.attrs
+    const ing = ingredients.find(i => i.id === ingredientId)
+    const rect = chip.getBoundingClientRect()
+    factorPopover.show(ing || null, factor, newFactor => {
+      editor.editor.chain().focus()
+        .command(({ tr, state }) => {
+          tr.setNodeMarkup(foundPos, null, { ...node.attrs, factor: newFactor })
+          return true
+        }).run()
+      recomputeSums()
+    }, { x: rect.left + window.scrollX, y: rect.bottom + window.scrollY + 4 })
+  })
+
+  const stepEntry = {
     wrapperId,
     wrapper,
     editor,
     getTitle: () => wrapper.querySelector('[data-step-title]').value.trim(),
     getTimer: () => parseInt(wrapper.querySelector('[data-step-timer]').value) || 0,
-  })
+  }
+  stepEditors.push(stepEntry)
+}
+
+function recomputeSums() {
+  if (!ingredientSidebar) return
+  const sums = {}
+  for (const { editor } of stepEditors) {
+    const doc = editor.getDoc()
+    const traverse = node => {
+      if (node.type === 'ingredientRef') {
+        const { ingredientId, factor = 1 } = node.attrs || {}
+        if (ingredientId) sums[ingredientId] = (sums[ingredientId] || 0) + factor
+      }
+      ;(node.content || []).forEach(traverse)
+    }
+    traverse(doc)
+  }
+  ingredientSidebar.updateSums(sums)
 }
 
 function destroyEditors() {
   stepEditors.forEach(e => e.editor.destroy())
   stepEditors = []
+  ingredientSidebar = null
 }
 
 // ── HTML row helpers ──────────────────────────────────────────────────────────
