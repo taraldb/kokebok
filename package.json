@@ -1,0 +1,16 @@
+{
+  "name": "kokebok",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dev-server.js",
+  "scripts": {
+    "dev": "node dev-server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

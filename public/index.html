@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kokebok</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/style.css" />
+  <script>const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">Kokebok</a>
+    <div class="nav-divider"></div>
+    <div class="nav-links" id="nav-links">
+      <button class="nav-link active" data-category="">Alle</button>
+    </div>
+    <button id="theme-toggle" aria-label="Bytt tema">☾</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <header class="page-header">
+    <h1>Oppskrifter</h1>
+    <p>Hjemmelagde favoritter</p>
+  </header>
+
+  <div class="index-controls">
+    <input
+      class="search-bar"
+      type="search"
+      placeholder="Søk etter oppskrift…"
+      id="search"
+      autocomplete="off"
+    />
+  </div>
+
+  <div class="recipe-grid" id="recipe-grid">
+    <div class="empty-state">Laster oppskrifter…</div>
+  </div>
+
+  <footer>
+    <p>Kokebok &nbsp;·&nbsp; Laget med ♥</p>
+  </footer>
+
+</div>
+
+<script>
+  let allRecipes = [];
+  let activeCategory = '';
+
+  async function init() {
+    const res = await fetch('recipes/recipe-index.json');
+    allRecipes = await res.json();
+    buildCategoryNav();
+    render();
+  }
+
+  function buildCategoryNav() {
+    const categories = [...new Set(allRecipes.map(r => r.category).filter(Boolean))].sort();
+    const nav = document.getElementById('nav-links');
+    categories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'nav-link';
+      btn.dataset.category = cat;
+      btn.textContent = capitalize(cat);
+      btn.addEventListener('click', () => setCategory(cat));
+      nav.appendChild(btn);
+    });
+    nav.querySelector('[data-category=""]').addEventListener('click', () => setCategory(''));
+  }
+
+  function setCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll('.nav-link').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.category === cat);
+    });
+    render();
+  }
+
+  function render() {
+    const query = document.getElementById('search').value.trim().toLowerCase();
+    const grid = document.getElementById('recipe-grid');
+
+    const filtered = allRecipes.filter(r => {
+      const matchCat = !activeCategory || r.category === activeCategory;
+      const haystack = [r.title, r.description, r.category, ...(r.tags || [])].join(' ').toLowerCase();
+      const matchSearch = !query || haystack.includes(query);
+      return matchCat && matchSearch;
+    });
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div class="empty-state">Ingen oppskrifter funnet.</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(r => `
+      <a class="recipe-card" href="recipe.html?id=${encodeURIComponent(r.id)}">
+        <div class="tag-list">
+          ${r.category ? `<span class="category-badge">${capitalize(r.category)}</span>` : ''}
+          ${(r.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+        </div>
+        <div class="card-title">${escHtml(r.title)}</div>
+        <div class="card-desc">${escHtml(r.description || '')}</div>
+      </a>
+    `).join('');
+  }
+
+  function capitalize(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  document.getElementById('search').addEventListener('input', render);
+
+  init();
+</script>
+<script src="assets/theme.js"></script>
+</body>
+</html>

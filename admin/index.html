@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kokebok Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cream: #f5f0e8; --brown: #3d2b1f; --brown-light: #c4a882;
+      --accent: #c8622a; --green: #4a6741; --text: #2c1f14; --muted: #7a6555;
+      --white: #faf8f4;
+    }
+    body { background: var(--cream); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+    .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+    .sidebar { background: var(--brown); color: var(--cream); padding: 24px 16px; }
+    .sidebar h2 { font-size: 1rem; margin-bottom: 20px; opacity: 0.7; letter-spacing: 1px; text-transform: uppercase; }
+    .recipe-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .recipe-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: background 0.15s; }
+    .recipe-item:hover { background: rgba(255,255,255,0.1); }
+    .recipe-item.active { background: var(--accent); }
+    .new-btn { width: 100%; margin-bottom: 16px; padding: 8px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+    .new-btn:hover { opacity: 0.85; }
+    .main { padding: 32px; overflow-y: auto; }
+    .main h1 { font-size: 1.3rem; color: var(--brown); margin-bottom: 24px; }
+    .form-grid { display: grid; gap: 16px; max-width: 800px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+    .field input, .field textarea, .field select {
+      padding: 8px 12px; border: 1px solid var(--brown-light); border-radius: 6px;
+      background: var(--white); font-family: inherit; font-size: 0.9rem; color: var(--text);
+      outline: none; transition: border-color 0.15s;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .section-head span { font-weight: 600; font-size: 0.9rem; color: var(--brown); }
+    .add-row-btn { padding: 4px 10px; background: none; border: 1px dashed var(--brown-light); border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: var(--muted); }
+    .add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .dynamic-row { display: flex; gap: 8px; align-items: flex-start; }
+    .dynamic-row input, .dynamic-row textarea { flex: 1; }
+    .dynamic-row .amount-input { flex: 0 0 80px; }
+    .dynamic-row .unit-input  { flex: 0 0 60px; }
+    .rm-btn { padding: 6px 8px; background: none; border: 1px solid var(--brown-light); border-radius: 4px; cursor: pointer; color: var(--muted); flex-shrink: 0; font-size: 0.9rem; line-height: 1; }
+    .rm-btn:hover { border-color: #c00; color: #c00; }
+    .actions { display: flex; gap: 10px; margin-top: 8px; }
+    .save-btn { padding: 10px 24px; background: var(--green); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+    .save-btn:hover { opacity: 0.85; }
+    .del-btn { padding: 10px 16px; background: none; border: 1px solid #c55; color: #c55; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+    .del-btn:hover { background: #c55; color: white; }
+    .status { margin-top: 10px; font-size: 0.85rem; padding: 8px 12px; border-radius: 6px; display: none; }
+    .status.ok  { background: #d4edda; color: #155724; display: block; }
+    .status.err { background: #f8d7da; color: #721c24; display: block; }
+    @media(max-width:600px) { .layout{grid-template-columns:1fr} .sidebar{display:none} }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <button class="new-btn" onclick="newRecipe()">+ Ny oppskrift</button>
+    <h2>Oppskrifter</h2>
+    <ul class="recipe-list" id="recipe-list"></ul>
+  </aside>
+
+  <main class="main">
+    <h1 id="form-title">Velg en oppskrift eller lag ny</h1>
+    <div id="form-area"></div>
+  </main>
+
+</div>
+
+<script>
+  let recipes = [];
+  let editingId = null;
+
+  const CATEGORIES = ['surdeig','brød','middag','dessert','suppe','kaker','frokost','fisk','vegetar','snacks'];
+
+  async function loadList() {
+    const res = await fetch('/api/recipes');
+    recipes = await res.json();
+    const ul = document.getElementById('recipe-list');
+    ul.innerHTML = recipes.map(r => `
+      <li class="recipe-item ${editingId === r.id ? 'active' : ''}"
+          onclick="loadRecipe('${r.id}')">${r.title}</li>
+    `).join('');
+  }
+
+  async function loadRecipe(id) {
+    const res = await fetch(`/api/recipes/${id}`);
+    const r = await res.json();
+    editingId = id;
+    renderForm(r);
+    await loadList();
+  }
+
+  function newRecipe() {
+    editingId = null;
+    renderForm({});
+    document.querySelectorAll('.recipe-item').forEach(el => el.classList.remove('active'));
+  }
+
+  function renderForm(r) {
+    document.getElementById('form-title').textContent = r.id ? r.title : 'Ny oppskrift';
+
+    const catOptions = CATEGORIES.map(c =>
+      `<option value="${c}" ${r.category === c ? 'selected' : ''}>${cap(c)}</option>`
+    ).join('');
+
+    document.getElementById('form-area').innerHTML = `
+      <div class="form-grid">
+
+        <div class="row">
+          <div class="field"><label>ID (url-slug)</label>
+            <input id="f-id" value="${esc(r.id||'')}" placeholder="f.eks. sjokoladekake" ${r.id ? 'readonly' : ''} /></div>
+          <div class="field"><label>Tittel</label>
+            <input id="f-title" value="${esc(r.title||'')}" placeholder="Oppskriftens navn" /></div>
+        </div>
+
+        <div class="row">
+          <div class="field"><label>Etikett (hero-tekst)</label>
+            <input id="f-label" value="${esc(r.label||'')}" placeholder="f.eks. Surdeig · Kaldheving" /></div>
+          <div class="field"><label>Kategori</label>
+            <select id="f-category"><option value="">— velg —</option>${catOptions}</select></div>
+        </div>
+
+        <div class="field"><label>Beskrivelse</label>
+          <textarea id="f-desc">${esc(r.description||'')}</textarea></div>
+
+        <div class="field"><label>Tags (kommaseparert)</label>
+          <input id="f-tags" value="${esc((r.tags||[]).join(', '))}" placeholder="kaldheving, baking" /></div>
+
+        <div class="section-head">
+          <span>Meta-info</span>
+          <button class="add-row-btn" onclick="addMeta()">+ Legg til</button>
+        </div>
+        <div id="meta-rows">
+          ${(r.meta||[]).map(m => metaRow(m.label, m.value)).join('')}
+        </div>
+
+        <div class="section-head" style="margin-top:4px">
+          <span>Porsjoner</span>
+        </div>
+        <div class="row">
+          <div class="field"><label>Base-antall</label>
+            <input id="f-srv-base" type="number" value="${r.servings?.base||''}" placeholder="24" /></div>
+          <div class="field"><label>Enhet</label>
+            <input id="f-srv-unit" value="${esc(r.servings?.unit||'')}" placeholder="stk / porsjoner" /></div>
+          <div class="field"><label>Steg (±)</label>
+            <input id="f-srv-step" type="number" value="${r.servings?.step||1}" /></div>
+          <div class="field"><label>Minimum</label>
+            <input id="f-srv-min" type="number" value="${r.servings?.min||1}" /></div>
+        </div>
+
+        <div class="section-head">
+          <span>Ingredienser</span>
+          <button class="add-row-btn" onclick="addIngredient()">+ Legg til</button>
+        </div>
+        <div id="ingredient-rows">
+          ${(r.ingredients||[]).map(i => ingredientRow(i.amount, i.unit, i.name)).join('')}
+        </div>
+
+        <div class="section-head">
+          <span>Fremgangsmåte</span>
+          <button class="add-row-btn" onclick="addStep()">+ Legg til</button>
+        </div>
+        <div id="step-rows">
+          ${(r.steps||[]).map(s => stepRow(s.title, s.text, s.timerSeconds||0)).join('')}
+        </div>
+
+        <div class="section-head">
+          <span>Tips</span>
+          <button class="add-row-btn" onclick="addTip()">+ Legg til</button>
+        </div>
+        <div id="tip-rows">
+          ${(r.tips||[]).map(t => tipRow(t)).join('')}
+        </div>
+
+        <div class="actions">
+          <button class="save-btn" onclick="save()">Lagre oppskrift</button>
+          ${r.id ? `<button class="del-btn" onclick="del('${esc(r.id)}')">Slett</button>` : ''}
+        </div>
+        <div class="status" id="status"></div>
+
+      </div>
+    `;
+  }
+
+  function metaRow(label='', value='') {
+    return `<div class="dynamic-row">
+      <input placeholder="Etikett (f.eks. Steketid)" value="${esc(label)}" data-meta-label />
+      <input placeholder="Verdi (f.eks. 22–24 min)"  value="${esc(value)}" data-meta-value />
+      <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+    </div>`;
+  }
+
+  function ingredientRow(amount='', unit='', name='') {
+    return `<div class="dynamic-row">
+      <input class="amount-input" type="number" placeholder="700" value="${amount}" data-ing-amount />
+      <input class="unit-input"  placeholder="ml"  value="${esc(unit)}" data-ing-unit />
+      <input placeholder="Ingrediensnavn"          value="${esc(name)}" data-ing-name />
+      <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+    </div>`;
+  }
+
+  function stepRow(title='', text='', timer=0) {
+    return `<div class="dynamic-row" style="flex-direction:column;gap:6px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <input style="flex:1" placeholder="Tittel på steg" value="${esc(title)}" data-step-title />
+        <input style="flex:0 0 100px" type="number" placeholder="Timer (sek)" value="${timer||''}" data-step-timer />
+        <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+      </div>
+      <textarea rows="3" placeholder="Beskrivelse (HTML tillatt)" data-step-text>${esc(text)}</textarea>
+    </div>`;
+  }
+
+  function tipRow(text='') {
+    return `<div class="dynamic-row">
+      <input placeholder="Tips" value="${esc(text)}" data-tip />
+      <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+    </div>`;
+  }
+
+  function addMeta()       { document.getElementById('meta-rows').insertAdjacentHTML('beforeend', metaRow()); }
+  function addIngredient() { document.getElementById('ingredient-rows').insertAdjacentHTML('beforeend', ingredientRow()); }
+  function addStep()       { document.getElementById('step-rows').insertAdjacentHTML('beforeend', stepRow()); }
+  function addTip()        { document.getElementById('tip-rows').insertAdjacentHTML('beforeend', tipRow()); }
+
+  async function save() {
+    const id = document.getElementById('f-id').value.trim().toLowerCase().replace(/\s+/g,'-');
+    const title = document.getElementById('f-title').value.trim();
+    if (!id || !title) { showStatus('ID og tittel er påkrevd.', false); return; }
+
+    const recipe = {
+      id,
+      title,
+      label:       document.getElementById('f-label').value.trim() || undefined,
+      description: document.getElementById('f-desc').value.trim() || undefined,
+      category:    document.getElementById('f-category').value || undefined,
+      tags:        document.getElementById('f-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+      meta:        [...document.querySelectorAll('.dynamic-row [data-meta-label]')].map(el => ({
+                     label: el.value.trim(),
+                     value: el.closest('.dynamic-row').querySelector('[data-meta-value]').value.trim()
+                   })).filter(m => m.label),
+      servings: {
+        base: parseFloat(document.getElementById('f-srv-base').value) || undefined,
+        unit: document.getElementById('f-srv-unit').value.trim() || undefined,
+        step: parseFloat(document.getElementById('f-srv-step').value) || 1,
+        min:  parseFloat(document.getElementById('f-srv-min').value)  || 1
+      },
+      ingredients: [...document.querySelectorAll('[data-ing-amount]')].map(el => ({
+        amount: parseFloat(el.value) || 0,
+        unit:   el.closest('.dynamic-row').querySelector('[data-ing-unit]').value.trim(),
+        name:   el.closest('.dynamic-row').querySelector('[data-ing-name]').value.trim()
+      })).filter(i => i.name),
+      steps: [...document.querySelectorAll('[data-step-title]')].map(el => ({
+        title:        el.value.trim(),
+        text:         el.closest('.dynamic-row').querySelector('[data-step-text]').value.trim(),
+        timerSeconds: parseInt(el.closest('.dynamic-row').querySelector('[data-step-timer]').value) || 0
+      })).filter(s => s.title),
+      tips: [...document.querySelectorAll('[data-tip]')].map(el => el.value.trim()).filter(Boolean)
+    };
+
+    const isNew = !editingId;
+    const method = isNew ? 'POST' : 'PUT';
+    const url = isNew ? '/api/recipes' : `/api/recipes/${editingId}`;
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(recipe)
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      editingId = recipe.id;
+      showStatus('Oppskrift lagret!', true);
+      await loadList();
+    } else {
+      showStatus(data.error || 'Feil ved lagring.', false);
+    }
+  }
+
+  async function del(id) {
+    if (!confirm(`Slette «${id}»?`)) return;
+    const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      editingId = null;
+      document.getElementById('form-title').textContent = 'Velg en oppskrift eller lag ny';
+      document.getElementById('form-area').innerHTML = '';
+      await loadList();
+    }
+  }
+
+  function showStatus(msg, ok) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status ' + (ok ? 'ok' : 'err');
+  }
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  loadList();
+</script>
+</body>
+</html>
