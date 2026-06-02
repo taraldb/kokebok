@@ -1,10 +1,13 @@
 const express = require('express');
+const { prerenderAll, computeTemplateHash } = require('../prerender/index');
+const { setTemplateHash } = require('../db/recipes');
 
 const router = express.Router();
 
-// POST /api/admin/rerender-all — body filled in M5
-router.post('/rerender-all', async (_req, res) => {
-  res.json({ ok: true, count: 0, ms: 0, note: 'Prerender not yet implemented (M5)' });
+router.post('/rerender-all', (_req, res) => {
+  const { count, ms } = prerenderAll();
+  setTemplateHash(computeTemplateHash());
+  res.json({ ok: true, count, ms });
 });
 
 module.exports = router;

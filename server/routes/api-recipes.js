@@ -2,6 +2,8 @@ const express = require('express');
 const { z } = require('zod');
 const { nanoid } = require('nanoid');
 const { listRecipes, getRecipe, upsertRecipe, deleteRecipe } = require('../db/recipes');
+const { prerenderRecipe, removePrerender } = require('../prerender/index');
+const { writeJsonSnapshot } = require('../lib/json-snapshot');
 
 const router = express.Router();
 
@@ -64,6 +66,8 @@ router.post('/', (req, res) => {
 
   const recipe = ensureIds({ ...parsed.data, id });
   upsertRecipe(recipe);
+  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
+  prerenderRecipe(recipe.id);
   res.status(201).json({ ok: true, id: recipe.id });
 });
 
@@ -73,12 +77,15 @@ router.put('/:id', (req, res) => {
 
   const recipe = ensureIds({ ...parsed.data, id: req.params.id });
   upsertRecipe(recipe);
+  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
+  prerenderRecipe(recipe.id);
   res.json({ ok: true });
 });
 
 router.delete('/:id', (req, res) => {
   if (!getRecipe(req.params.id)) return res.status(404).json({ error: 'not found' });
   deleteRecipe(req.params.id);
+  removePrerender(req.params.id);
   res.json({ ok: true });
 });
 

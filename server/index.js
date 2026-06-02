@@ -2,7 +2,8 @@ const express = require('express');
 const compression = require('compression');
 const path = require('path');
 const { migrate } = require('./db/migrate');
-const { listRecipes, getRecipe } = require('./db/recipes');
+const { listRecipes, getRecipe, getTemplateHash, setTemplateHash } = require('./db/recipes');
+const { prerenderAll, computeTemplateHash } = require('./prerender/index');
 const apiRecipes = require('./routes/api-recipes');
 const apiAdmin = require('./routes/api-admin');
 const legacy = require('./routes/legacy');
@@ -12,6 +13,18 @@ const { PUBLIC_DIR } = require('./config');
 const { PORT = 8080 } = process.env;
 
 migrate();
+
+// Auto-rerender when template changes
+(function checkTemplateHash() {
+  const current = computeTemplateHash();
+  const stored  = getTemplateHash();
+  if (current !== stored) {
+    console.log('Template changed — prerendering all recipes…');
+    const { count, ms } = prerenderAll();
+    setTemplateHash(current);
+    console.log(`Prerendered ${count} recipes in ${ms}ms`);
+  }
+})();
 
 const app = express();
 app.use(compression());
