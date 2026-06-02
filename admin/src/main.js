@@ -3,6 +3,7 @@ import { wireDropTarget } from './editor/dragHandlers.js'
 import { FactorPopover } from './components/FactorPopover.js'
 import { IngredientSidebar } from './components/IngredientSidebar.js'
 import { RawModeToggle } from './components/RawModeToggle.js'
+import { PasteRawModal } from './components/PasteRawModal.js'
 
 const CATEGORIES = ['surdeig','brød','middag','dessert','suppe','kaker','frokost','fisk','vegetar','snacks']
 
@@ -11,6 +12,24 @@ let editingId = null
 let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
 let ingredientSidebar = null
 const factorPopover = new FactorPopover()
+
+const pasteRawModal = new PasteRawModal({
+  onSave: async (recipe) => {
+    const res = await fetch('/api/recipes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(recipe),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      editingId = data.id || recipe.id
+      await loadList()
+      await loadRecipe(editingId)
+    } else {
+      alert(data.error || 'Feil ved lagring.')
+    }
+  },
+})
 
 // ── Util ──────────────────────────────────────────────────────────────────────
 
@@ -378,5 +397,7 @@ document.getElementById('new-btn').addEventListener('click', () => {
   renderForm({})
   document.querySelectorAll('.recipe-item').forEach(el => el.classList.remove('active'))
 })
+
+document.getElementById('paste-btn').addEventListener('click', () => pasteRawModal.show())
 
 loadList()
