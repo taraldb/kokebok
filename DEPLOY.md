@@ -49,6 +49,15 @@ Or via Unraid Community Applications / Docker tab with these settings:
 | Path `/data` | `/mnt/user/appdata/kokebok` |
 | Environment `DATA_DIR` | `/data` |
 
+#### Volume path requirements
+
+| Container path | Purpose | Required |
+|----------------|---------|----------|
+| `/data` | SQLite DB (`kokebok.db`) + JSON snapshots | Yes — mount a persistent directory here |
+| `/data/recipes/` | Recipe JSON files for first-boot auto-migration | Optional — create and populate before first start to seed the DB |
+
+The server writes the DB to `/data/kokebok.db`. If `/data/recipes/*.json` exist when the DB is empty, they are auto-migrated into SQLite on first boot.
+
 ### 4. File permissions
 
 Unraid runs containers as uid 99 (nobody). Fix ownership:
@@ -129,6 +138,62 @@ JSON snapshots (redundant safety net, written on every save):
 
 Recommended: include `/mnt/user/appdata/kokebok/` in your Unraid backup
 schedule (CA Backup plugin or Duplicati).
+
+---
+
+## Zero-trust access control (Cloudflare Access)
+
+Protect `/admin/` and `/api/` while keeping the recipe site public.
+
+### Cloudflare Access — two-application setup
+
+**Application 1 — Public site (bypass)**
+
+| Field | Value |
+|-------|-------|
+| Name | `Kokebok public` |
+| Subdomain | `your-domain.example` |
+| Path | *(leave empty — matches all paths)* |
+| Policy | Action: **Bypass** — no authentication required |
+
+**Application 2 — Admin (protected)**
+
+| Field | Value |
+|-------|-------|
+| Name | `Kokebok admin` |
+| Subdomain | `your-domain.example` |
+| Path | `/admin` |
+| Policy | Action: **Allow** — add your email or identity provider |
+
+Add a second rule for the API if you want to protect it too:
+
+| Field | Value |
+|-------|-------|
+| Name | `Kokebok API` |
+| Subdomain | `your-domain.example` |
+| Path | `/api` |
+| Policy | Action: **Allow** — same identity rule as admin |
+
+> **Order matters** — Cloudflare Access matches the most specific path first.
+> The `/admin` and `/api` applications will take precedence over the root bypass.
+
+### Cloudflare Tunnel (alternative to nginx)
+
+If using `cloudflared` instead of nginx for ingress:
+
+```yaml
+# config.yml for cloudflared
+tunnel: <tunnel-id>
+credentials-file: /etc/cloudflared/creds.json
+
+ingress:
+  - hostname: your-domain.example
+    service: http://localhost:8080
+  - service: http_status:404
+```
+
+Access policies are configured in the Cloudflare Zero Trust dashboard
+(Access → Applications) — the tunnel config itself doesn't need path rules.
 
 ---
 

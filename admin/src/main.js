@@ -133,6 +133,7 @@ function renderForm(r) {
 
       <div class="actions">
         <button class="save-btn" id="save-btn">Lagre oppskrift</button>
+        <button class="cancel-btn" id="cancel-btn">Avbryt</button>
         ${r.id ? `<button class="del-btn" id="del-btn">Slett</button>` : ''}
       </div>
       <div class="status" id="status"></div>
@@ -165,6 +166,18 @@ function renderForm(r) {
   document.getElementById('add-tip-btn').addEventListener('click', () =>
     document.getElementById('tip-rows').insertAdjacentHTML('beforeend', tipRowHtml()))
   document.getElementById('save-btn').addEventListener('click', save)
+  document.getElementById('cancel-btn').addEventListener('click', () => {
+    if (r.id) {
+      loadRecipe(r.id)
+    } else {
+      destroyEditors()
+      document.getElementById('form-title').textContent = 'Velg en oppskrift eller lag ny'
+      document.getElementById('form-area').innerHTML = ''
+      document.querySelectorAll('.recipe-item').forEach(el => el.classList.remove('active'))
+      const sel = document.getElementById('mobile-recipe-select')
+      if (sel) sel.value = ''
+    }
+  })
   document.getElementById('del-btn')?.addEventListener('click', () => del(r.id))
 
   // Raw YAML toggle
