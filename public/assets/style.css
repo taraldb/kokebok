@@ -13,33 +13,33 @@
   --text-muted: #7a6555;
 }
 
-/* Svart Gull — near-black with champagne gold and terracotta ember */
+/* Kald Stål — cool slate-black, steel blue accent, teal green */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --cream:       #100e0a;
-    --warm-white:  #1a1710;
-    --brown:       #f2e4c4;
-    --brown-mid:   #c4a070;
-    --brown-light: #2e231a;
-    --accent:      #e8722a;
-    --accent-light:#f5956a;
-    --green:       #5a8a4a;
-    --text:        #e8dcc8;
-    --text-muted:  #9a8060;
+    --cream:       #0d1117;
+    --warm-white:  #161c27;
+    --brown:       #e8edf5;
+    --brown-mid:   #7b90a8;
+    --brown-light: #253047;
+    --accent:      #5294d4;
+    --accent-light:#74aee0;
+    --green:       #3a9e7c;
+    --text:        #b8c6d8;
+    --text-muted:  #566880;
   }
 }
 
 [data-theme="dark"] {
-  --cream:       #100e0a;
-  --warm-white:  #1a1710;
-  --brown:       #f2e4c4;
-  --brown-mid:   #c4a070;
-  --brown-light: #2e231a;
-  --accent:      #e8722a;
-  --accent-light:#f5956a;
-  --green:       #5a8a4a;
-  --text:        #e8dcc8;
-  --text-muted:  #9a8060;
+  --cream:       #0d1117;
+  --warm-white:  #161c27;
+  --brown:       #e8edf5;
+  --brown-mid:   #7b90a8;
+  --brown-light: #253047;
+  --accent:      #5294d4;
+  --accent-light:#74aee0;
+  --green:       #3a9e7c;
+  --text:        #b8c6d8;
+  --text-muted:  #566880;
 }
 
 body {
@@ -821,4 +821,18 @@ footer {
   .meta-row { gap: 16px; }
   .recipe-grid { grid-template-columns: 1fr; }
   .nav-inner { gap: 16px; }
+}
+
+/* Dark mode shadow overrides — replace warm rgba with cool slate */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    .step:hover  { box-shadow: 0 4px 20px rgba(10,20,50,0.35); }
+    .step.active { box-shadow: 0 4px 24px rgba(82,148,212,0.18); }
+    .recipe-card:hover { box-shadow: 0 6px 28px rgba(10,20,50,0.45); }
+  }
+}
+[data-theme="dark"] {
+  .step:hover  { box-shadow: 0 4px 20px rgba(10,20,50,0.35); }
+  .step.active { box-shadow: 0 4px 24px rgba(82,148,212,0.18); }
+  .recipe-card:hover { box-shadow: 0 6px 28px rgba(10,20,50,0.45); }
 }
