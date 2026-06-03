@@ -73,14 +73,15 @@ function upsertRecipe(r) {
     const existingIngIds = new Set(
       db.prepare(`SELECT id FROM ingredients WHERE recipe_id = ?`).all(r.id).map(i => i.id)
     );
+    const deleteIng = db.prepare(`DELETE FROM ingredients WHERE recipe_id = ? AND id = ?`);
     for (const id of existingIngIds) {
-      if (!incomingIngIds.has(id)) db.prepare(`DELETE FROM ingredients WHERE id = ?`).run(id);
+      if (!incomingIngIds.has(id)) deleteIng.run(r.id, id);
     }
     for (const ing of r.ingredients || []) {
       db.prepare(`
-        INSERT INTO ingredients (id,recipe_id,position,name,amount,unit)
-        VALUES (@id,@recipe_id,@position,@name,@amount,@unit)
-        ON CONFLICT(id) DO UPDATE SET
+        INSERT INTO ingredients (recipe_id,id,position,name,amount,unit)
+        VALUES (@recipe_id,@id,@position,@name,@amount,@unit)
+        ON CONFLICT(recipe_id,id) DO UPDATE SET
           position=excluded.position, name=excluded.name,
           amount=excluded.amount, unit=excluded.unit
       `).run({ ...ing, recipe_id: r.id });

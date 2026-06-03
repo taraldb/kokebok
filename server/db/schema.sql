@@ -12,10 +12,11 @@ CREATE TABLE IF NOT EXISTS recipes (
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (
-  id TEXT PRIMARY KEY,
   recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-  position INTEGER NOT NULL,
-  name TEXT NOT NULL, amount REAL, unit TEXT
+  id        TEXT NOT NULL,
+  position  INTEGER NOT NULL,
+  name      TEXT NOT NULL, amount REAL, unit TEXT,
+  PRIMARY KEY (recipe_id, id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_ingredients_recipe ON ingredients(recipe_id, position);
