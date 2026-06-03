@@ -37,6 +37,21 @@ function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
 function genId() { return Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10) }
 
+function slugify(name) {
+  return name.toLowerCase()
+    .replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')
+    || 'ingredient'
+}
+
+function uniqueSlug(name, taken) {
+  const base = slugify(name)
+  if (!taken.has(base)) return base
+  let n = 2
+  while (taken.has(`${base}-${n}`)) n++
+  return `${base}-${n}`
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 async function loadList() {
@@ -121,9 +136,14 @@ function renderForm(r) {
         ${(r.ingredients||[]).map(i => ingredientRowHtml(i.id, i.amount, i.unit, i.name)).join('')}
       </div>
 
-      <div class="section-head"><span>Fremgangsmåte</span>
-        <button class="add-row-btn" id="add-step-btn">+ Legg til</button></div>
-      <div id="step-rows"></div>
+      <div class="steps-layout">
+        <div class="steps-col">
+          <div class="section-head"><span>Fremgangsmåte</span>
+            <button class="add-row-btn" id="add-step-btn">+ Legg til</button></div>
+          <div id="step-rows"></div>
+        </div>
+        <div id="ing-sidebar-col"></div>
+      </div>
 
       <div class="section-head"><span>Tips</span>
         <button class="add-row-btn" id="add-tip-btn">+ Legg til</button></div>
@@ -142,12 +162,8 @@ function renderForm(r) {
 
   const ingredients = r.ingredients || []
 
-  // Render ingredient sidebar
-  const sidebarContainer = document.createElement('div')
-  sidebarContainer.id = 'ing-sidebar'
-  sidebarContainer.className = 'ing-sidebar-panel'
-  const formGrid = document.querySelector('.form-grid')
-  if (formGrid) formGrid.insertAdjacentElement('beforebegin', sidebarContainer)
+  // Render ingredient sidebar inside the steps layout column
+  const sidebarContainer = document.getElementById('ing-sidebar-col')
   ingredientSidebar = new IngredientSidebar(sidebarContainer, ingredients)
 
   // Render TipTap step editors
@@ -337,7 +353,7 @@ async function save() {
   const title = document.getElementById('f-title').value.trim()
   if (!id || !title) { showStatus('ID og tittel er påkrevd.', false); return }
 
-  const ingredients = [...document.querySelectorAll('[data-ing-id-val]')].map((el, pos) => ({
+  const rawIngredients = [...document.querySelectorAll('[data-ing-id-val]')].map((el, pos) => ({
     id: el.value,
     position: pos,
     amount: parseFloat(el.closest('.dynamic-row').querySelector('[data-ing-amount]').value) || null,
@@ -345,12 +361,37 @@ async function save() {
     name: el.closest('.dynamic-row').querySelector('[data-ing-name]').value.trim(),
   })).filter(i => i.name)
 
+  // Remap newly-generated (non-slug) IDs to name-based slugs
+  const savedIngIds = new Set((recipes.find(r => r.id === editingId)?.ingredients || []).map(i => i.id))
+  const takenSlugs = new Set(rawIngredients.filter(i => savedIngIds.has(i.id)).map(i => i.id))
+  const idRemap = new Map()
+  const ingredients = rawIngredients.map(ing => {
+    if (savedIngIds.has(ing.id)) return ing
+    const slug = uniqueSlug(ing.name, takenSlugs)
+    takenSlugs.add(slug)
+    idRemap.set(ing.id, slug)
+    return { ...ing, id: slug }
+  })
+
+  function remapDoc(doc) {
+    if (!doc || !idRemap.size) return doc
+    const walk = node => {
+      if (!node) return node
+      if (node.type === 'ingredientRef' && idRemap.has(node.attrs?.ingredientId)) {
+        return { ...node, attrs: { ...node.attrs, ingredientId: idRemap.get(node.attrs.ingredientId) } }
+      }
+      if (node.content) return { ...node, content: node.content.map(walk) }
+      return node
+    }
+    return walk(doc)
+  }
+
   const steps = stepEditors.map((e, pos) => ({
     id: e.wrapper.dataset.stepId || genId(),
     position: pos,
     title: e.getTitle(),
     timer_seconds: e.getTimer(),
-    content_doc: e.editor.getDoc(),
+    content_doc: remapDoc(e.editor.getDoc()),
   })).filter(s => s.title)
 
   const recipe = {

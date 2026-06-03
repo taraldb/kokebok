@@ -57,6 +57,15 @@
     .status.ok  { background: #d4edda; color: #155724; display: block; }
     .status.err { background: #f8d7da; color: #721c24; display: block; }
 
+    /* Steps + ingredient sidebar two-column layout */
+    .steps-layout { display: grid; grid-template-columns: 1fr 200px; gap: 16px; align-items: start; }
+    .steps-col { min-width: 0; }
+    #ing-sidebar-col { position: sticky; top: 16px; }
+    @media(max-width: 700px) {
+      .steps-layout { grid-template-columns: 1fr; }
+      #ing-sidebar-col { position: static; }
+    }
+
     /* Step editor */
     .step-wrapper { border: 1px solid var(--brown-light); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
     .step-header { display: flex; gap: 8px; margin-bottom: 8px; }

@@ -29,8 +29,10 @@ export class IngredientSidebar {
 
   render() {
     this._container.innerHTML = `
-      <div class="ing-sidebar-header">Ingredienser</div>
-      <ul class="ing-sidebar-list" id="ing-sidebar-list"></ul>
+      <div class="ing-sidebar-panel">
+        <div class="ing-sidebar-header">Ingredienser</div>
+        <ul class="ing-sidebar-list" id="ing-sidebar-list"></ul>
+      </div>
     `
     const ul = this._container.querySelector('#ing-sidebar-list')
     this._ingredients.forEach(ing => {
