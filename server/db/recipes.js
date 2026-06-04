@@ -79,11 +79,11 @@ function upsertRecipe(r) {
     }
     for (const ing of r.ingredients || []) {
       db.prepare(`
-        INSERT INTO ingredients (recipe_id,id,position,name,amount,unit)
-        VALUES (@recipe_id,@id,@position,@name,@amount,@unit)
+        INSERT INTO ingredients (recipe_id,id,position,name,amount,unit,description)
+        VALUES (@recipe_id,@id,@position,@name,@amount,@unit,@description)
         ON CONFLICT(recipe_id,id) DO UPDATE SET
           position=excluded.position, name=excluded.name,
-          amount=excluded.amount, unit=excluded.unit
+          amount=excluded.amount, unit=excluded.unit, description=excluded.description
       `).run({ ...ing, recipe_id: r.id });
     }
 

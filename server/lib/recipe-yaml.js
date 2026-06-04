@@ -28,6 +28,7 @@ function recipeToYaml(r) {
       amount: i.amount,
       unit: i.unit,
       name: i.name,
+      ...(i.description ? { description: i.description } : {}),
     })),
     steps: (r.steps || []).map(s => ({
       id: s.id,
@@ -53,7 +54,7 @@ function yamlToRecipe(yamlStr) {
   const ingredients = (obj.ingredients || []).map((i, pos) => {
     const id = i.id || uniqueSlug(i.name || '', taken)
     taken.add(id)
-    return { id, position: pos, name: i.name || '', amount: i.amount ?? null, unit: i.unit ?? null }
+    return { id, position: pos, name: i.name || '', amount: i.amount ?? null, unit: i.unit ?? null, description: i.description ?? null }
   });
 
   const steps = (obj.steps || []).map((s, pos) => ({

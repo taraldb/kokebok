@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS ingredients (
   recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
   id        TEXT NOT NULL,
   position  INTEGER NOT NULL,
-  name      TEXT NOT NULL, amount REAL, unit TEXT,
+  name      TEXT NOT NULL, amount REAL, unit TEXT, description TEXT,
   PRIMARY KEY (recipe_id, id)
 );
 

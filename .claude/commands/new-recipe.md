@@ -55,6 +55,7 @@ ingredients:
     amount: 3
     unit: fedd
     name: hvitløk
+    description: finhakket    # optional: extra prep note shown in parentheses, e.g. "romtemperatur", "hakket"
 steps:
   - title: "Kort tittel"
     timer_seconds: 0        # 0 if no timer, else number of seconds
@@ -85,4 +86,5 @@ Step `content` is plain text with optional inline formatting:
 - All user-facing strings in Norwegian
 - Omit optional fields (`label`, `description`, `meta`, `tips`) if not applicable — do not include them with empty values
 - `ingredients[].amount` must be a number or null (not a string)
+- `ingredients[].description` is optional; use for prep notes ("romtemperatur", "hakket fint") — shown in parentheses after the name on the recipe page; omit if not applicable
 - Prefer `{{ing:...}}` refs in step content over re-stating ingredient names

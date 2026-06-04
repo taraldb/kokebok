@@ -7,6 +7,14 @@ function migrate() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(sql);
   migrateIngredientsCompositePk(db);
+  migrateIngredientsAddDescription(db);
+}
+
+function migrateIngredientsAddDescription(db) {
+  const cols = db.prepare(`PRAGMA table_info(ingredients)`).all();
+  if (cols.some(c => c.name === 'description')) return;
+  db.exec(`ALTER TABLE ingredients ADD COLUMN description TEXT`);
+  console.log('Added description column to ingredients');
 }
 
 // Migrate ingredients from global id PK to composite (recipe_id, id) PK.

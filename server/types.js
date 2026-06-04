@@ -6,6 +6,7 @@
  * @property {string} name
  * @property {number|null} amount
  * @property {string|null} unit
+ * @property {string|null} description
  */
 
 /**

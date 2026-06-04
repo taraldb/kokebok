@@ -39,13 +39,15 @@ function renderIndexPage(recipes) {
   <title>Kokebok</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
   <script>const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);<\/script>
 </head>
 <body>
 
 <nav class="nav">
   <div class="nav-inner">
-    <a href="/" class="nav-logo">Kokebok</a>
+    <a href="/" class="nav-logo"><img src="/assets/logo.png" alt="" class="nav-logo-img" />Kokebok</a>
     <div class="nav-divider"></div>
     <div class="nav-links" id="nav-links">
       <button class="nav-link active" data-category="">Alle</button>

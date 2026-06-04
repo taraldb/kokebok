@@ -133,7 +133,7 @@ function renderForm(r) {
       <div class="section-head"><span>Ingredienser</span>
         <button class="add-row-btn" id="add-ing-btn">+ Legg til</button></div>
       <div id="ingredient-rows">
-        ${(r.ingredients||[]).map(i => ingredientRowHtml(i.id, i.amount, i.unit, i.name)).join('')}
+        ${(r.ingredients||[]).map(i => ingredientRowHtml(i.id, i.amount, i.unit, i.name, i.description)).join('')}
       </div>
 
       <div class="steps-layout">
@@ -171,6 +171,7 @@ function renderForm(r) {
   ;(r.steps || []).forEach((step, i) => {
     appendStepEditor(stepRowsEl, step, ingredients)
   })
+  recomputeSums()
 
   // Wire buttons
   document.getElementById('add-meta-btn').addEventListener('click', () =>
@@ -348,7 +349,7 @@ function metaRowHtml(label = '', value = '') {
   </div>`
 }
 
-function ingredientRowHtml(id = '', amount = '', unit = '', name = '') {
+function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = '') {
   const safeId = id || genId()
   return `<div class="dynamic-row" data-ing-row>
     <input type="hidden" data-ing-id="${esc(safeId)}" data-ing-id-val value="${esc(safeId)}" />
@@ -356,6 +357,7 @@ function ingredientRowHtml(id = '', amount = '', unit = '', name = '') {
            value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount />
     <input class="unit-input" placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
+    <input class="desc-input" placeholder="Beskrivelse (valgfri)" value="${esc(desc||'')}" data-ing-desc />
     <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
   </div>`
 }
@@ -380,6 +382,7 @@ async function save() {
     amount: parseFloat(el.closest('.dynamic-row').querySelector('[data-ing-amount]').value) || null,
     unit: el.closest('.dynamic-row').querySelector('[data-ing-unit]').value.trim() || null,
     name: el.closest('.dynamic-row').querySelector('[data-ing-name]').value.trim(),
+    description: el.closest('.dynamic-row').querySelector('[data-ing-desc]').value.trim() || null,
   })).filter(i => i.name)
 
   // Remap newly-generated (non-slug) IDs to name-based slugs
