@@ -18,6 +18,11 @@ export class IngredientSidebar {
     this.render()
   }
 
+  update(ingredients) {
+    this._ingredients = ingredients
+    this.render()
+  }
+
   /**
    * Update factor sums from all step editors.
    * @param {{ [ingredientId: string]: number }} sums
@@ -50,6 +55,7 @@ export class IngredientSidebar {
         <span class="ing-sum-badge" data-sum-id="${esc(ing.id)}">—</span>
       `
       makeDraggable(li, ing.id)
+      li.addEventListener('click', () => this._opts.onInsert?.(ing.id))
       ul.appendChild(li)
     })
     this._updateBadges()

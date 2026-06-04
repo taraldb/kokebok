@@ -11,6 +11,7 @@ let recipes = []
 let editingId = null
 let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
 let ingredientSidebar = null
+let lastFocusedStepEditor = null
 let filterText = ''
 let filterCategory = ''
 const factorPopover = new FactorPopover()
@@ -200,7 +201,14 @@ function renderForm(r) {
 
   // Render ingredient sidebar inside the steps layout column
   const sidebarContainer = document.getElementById('ing-sidebar-col')
-  ingredientSidebar = new IngredientSidebar(sidebarContainer, ingredients)
+  ingredientSidebar = new IngredientSidebar(sidebarContainer, ingredients, {
+    onInsert: ingId => {
+      if (lastFocusedStepEditor) {
+        lastFocusedStepEditor.insertIngredientRef(ingId, 1.0, null)
+        recomputeSums()
+      }
+    },
+  })
 
   // Render TipTap step editors
   const stepRowsEl = document.getElementById('step-rows')
@@ -243,10 +251,10 @@ function renderForm(r) {
 }
 
 function getCurrentIngredients() {
-  return [...document.querySelectorAll('[data-ing-id]')].map(el => {
+  return [...document.querySelectorAll('#ingredient-rows [data-ing-id-val]')].map(el => {
     const row = el.closest('.dynamic-row')
     return {
-      id: el.dataset.ingId,
+      id: el.value,
       amount: parseFloat(row.querySelector('[data-ing-amount]').value) || null,
       unit: row.querySelector('[data-ing-unit]').value.trim() || null,
       name: row.querySelector('[data-ing-name]').value.trim(),
@@ -268,6 +276,12 @@ function appendStepEditor(container, step, ingredients) {
              value="${esc(step?.title || '')}" data-step-title />
       <input class="step-timer-input" type="number" placeholder="Timer (sek)"
              value="${step?.timer_seconds || ''}" data-step-timer />
+      <div class="step-reorder-btns">
+        <button class="step-reorder-btn" data-dir="top"    title="Til toppen">⇈</button>
+        <button class="step-reorder-btn" data-dir="up"     title="Opp">↑</button>
+        <button class="step-reorder-btn" data-dir="down"   title="Ned">↓</button>
+        <button class="step-reorder-btn" data-dir="bottom" title="Til bunnen">⇊</button>
+      </div>
       <button class="rm-btn" data-rm-step>×</button>
     </div>
     <div class="step-toolbar">
@@ -276,6 +290,10 @@ function appendStepEditor(container, step, ingredients) {
     <div class="step-editor-mount" id="${editorId}"></div>
   `
   container.appendChild(wrapper)
+
+  wrapper.querySelectorAll('[data-dir]').forEach(btn =>
+    btn.addEventListener('click', () => reorderStep(wrapperId, btn.dataset.dir))
+  )
 
   wrapper.querySelector('[data-rm-step]').addEventListener('click', () => {
     const idx = stepEditors.findIndex(e => e.wrapperId === wrapperId)
@@ -289,6 +307,7 @@ function appendStepEditor(container, step, ingredients) {
     ingredients,
     initialDoc: step?.content_doc || null,
     onUpdate: () => recomputeSums(),
+    onFocus: () => { lastFocusedStepEditor = editor },
   })
 
   // Bold toolbar button
@@ -373,6 +392,22 @@ function destroyEditors() {
   stepEditors.forEach(e => e.editor.destroy())
   stepEditors = []
   ingredientSidebar = null
+  lastFocusedStepEditor = null
+}
+
+function reorderStep(wrapperId, direction) {
+  const idx = stepEditors.findIndex(e => e.wrapperId === wrapperId)
+  if (idx === -1) return
+  const last = stepEditors.length - 1
+  const newIdx = direction === 'top' ? 0
+    : direction === 'up'     ? Math.max(0, idx - 1)
+    : direction === 'down'   ? Math.min(last, idx + 1)
+    : /* bottom */             last
+  if (newIdx === idx) return
+  const container = stepEditors[idx].wrapper.parentElement
+  const [moved] = stepEditors.splice(idx, 1)
+  stepEditors.splice(newIdx, 0, moved)
+  stepEditors.forEach(e => container.appendChild(e.wrapper))
 }
 
 // ── HTML row helpers ──────────────────────────────────────────────────────────
@@ -406,6 +441,48 @@ function tipRowHtml(text = '') {
 }
 
 // ── Save / Delete ─────────────────────────────────────────────────────────────
+
+function ensureSpacesAroundChips(doc) {
+  if (!doc?.content) return doc
+
+  function fixInlineContent(content) {
+    const nodes = content.slice()
+    const result = []
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]
+      if (node.type !== 'ingredientRef') { result.push(node); continue }
+      // Space before chip
+      if (result.length > 0) {
+        const prev = result[result.length - 1]
+        if (prev.type === 'text' && !prev.text.endsWith(' ')) {
+          result[result.length - 1] = { ...prev, text: prev.text + ' ' }
+        } else if (prev.type !== 'text') {
+          result.push({ type: 'text', text: ' ' })
+        }
+      }
+      result.push(node)
+      // Space after chip
+      if (i + 1 < nodes.length) {
+        const next = nodes[i + 1]
+        if (next.type === 'text' && !next.text.startsWith(' ')) {
+          nodes[i + 1] = { ...next, text: ' ' + next.text }
+        } else if (next.type !== 'text' && next.type !== 'ingredientRef') {
+          result.push({ type: 'text', text: ' ' })
+        }
+      }
+    }
+    return result
+  }
+
+  function walkContent(content) {
+    if (!Array.isArray(content)) return content
+    const hasChip = content.some(n => n.type === 'ingredientRef')
+    const fixed = hasChip ? fixInlineContent(content) : content
+    return fixed.map(node => node.content ? { ...node, content: walkContent(node.content) } : node)
+  }
+
+  return { ...doc, content: walkContent(doc.content) }
+}
 
 async function save() {
   const id = document.getElementById('f-id').value.trim().toLowerCase().replace(/\s+/g,'-')
@@ -446,12 +523,14 @@ async function save() {
     return walk(doc)
   }
 
+  const fixedDocs = stepEditors.map(e => ensureSpacesAroundChips(remapDoc(e.editor.getDoc())))
+
   const steps = stepEditors.map((e, pos) => ({
     id: e.wrapper.dataset.stepId || genId(),
     position: pos,
     title: e.getTitle(),
     timer_seconds: e.getTimer(),
-    content_doc: remapDoc(e.editor.getDoc()),
+    content_doc: fixedDocs[pos],
   })).filter(s => s.title)
 
   const recipe = {
@@ -487,6 +566,8 @@ async function save() {
 
   if (res.ok) {
     editingId = id
+    stepEditors.forEach((e, i) => { e.editor.setIngredients(ingredients); e.editor.setDoc(fixedDocs[i]) })
+    if (ingredientSidebar) { ingredientSidebar.update(ingredients); recomputeSums() }
     showStatus('Oppskrift lagret!', true)
     await loadList()
   } else {

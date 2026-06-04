@@ -34,8 +34,12 @@ function docToHtml(doc, ingredients) {
       if (!ing) return displayOverride ? esc(displayOverride) : '';
 
       const base = (ing.amount ?? 0) * factor;
-      const display = displayOverride || formatAmount(base, ing.unit);
-      return `<span class="ing-ref" data-base="${esc(String(base))}" data-unit="${esc(ing.unit || '')}" data-ing-id="${esc(ingredientId)}" data-factor="${esc(String(factor))}">${esc(display)}</span>`;
+      const qty = displayOverride || (base > 0 ? formatAmount(base, ing.unit) : '');
+      const name = ing.name || '';
+      const qtyHtml = qty
+        ? `<span class="ing-ref-qty" data-base="${esc(String(base))}" data-unit="${esc(ing.unit || '')}">${esc(qty)}</span> `
+        : '';
+      return `<span class="ing-ref" data-ing-id="${esc(ingredientId)}" data-factor="${esc(String(factor))}">${qtyHtml}<span class="ing-ref-name">${esc(name)}</span></span>`;
     }
 
     if (node.type === 'paragraph') {

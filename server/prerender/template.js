@@ -53,7 +53,7 @@ function renderRecipePage(r) {
     return `
         <li class="ingredient">
           <span class="ingredient-amount" data-base="${esc(String(amt))}" data-unit="${esc(ing.unit || '')}">${esc(formatAmount(amt, ing.unit))}</span>
-          <span class="ingredient-name">${esc(ing.name)}${descHtml}</span>
+          <span class="ingredient-name">${esc(capitalize(ing.name))}${descHtml}</span>
         </li>`;
   }).join('');
 

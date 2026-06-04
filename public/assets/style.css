@@ -409,10 +409,21 @@ section:nth-child(4) { animation-delay: 0.3s; }
 }
 
 .step-text strong,
-.step-text b,
-.step-text .ing-ref {
+.step-text b {
   font-weight: 700;
   color: var(--text);
+}
+
+.step-text .ing-ref {
+  color: var(--text);
+}
+
+.step-text .ing-ref-qty {
+  font-weight: 700;
+}
+
+.step-text .ing-ref-name {
+  font-weight: 400;
 }
 
 /* ── Timer ── */
@@ -779,8 +790,12 @@ footer {
 
 .cm-step-text strong,
 .cm-step-text b,
-.cm-step-text .ing-ref {
+.cm-step-text .ing-ref-qty {
   font-weight: 700;
+}
+
+.cm-step-text .ing-ref-name {
+  font-weight: 400;
 }
 
 .cm-timer-row {

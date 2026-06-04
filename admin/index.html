@@ -71,7 +71,10 @@
 
     /* Step editor */
     .step-wrapper { border: 1px solid var(--brown-light); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-    .step-header { display: flex; gap: 8px; margin-bottom: 8px; }
+    .step-header { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .step-reorder-btns { display: flex; gap: 2px; flex-shrink: 0; }
+    .step-reorder-btn { padding: 4px 6px; background: none; border: 1px solid var(--brown-light); border-radius: 4px; cursor: pointer; color: var(--muted); font-size: 0.8rem; line-height: 1; }
+    .step-reorder-btn:hover { border-color: var(--accent); color: var(--accent); }
     .step-title-input { flex: 1; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
     .step-timer-input { flex: 0 0 120px; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
     .step-toolbar { display: flex; gap: 4px; margin-bottom: 4px; }
@@ -88,6 +91,8 @@
       border-radius: 4px; padding: 1px 6px; font-size: 0.82rem;
       margin: 0 1px; cursor: default; white-space: nowrap;
     }
+    .ing-chip-qty { font-weight: 600; }
+    .ing-chip-name { font-weight: 400; opacity: 0.88; }
 
     /* Ingredient sidebar panel */
     .ing-sidebar-panel { border: 1px solid var(--brown-light); border-radius: 8px; padding: 12px; margin-bottom: 16px; max-width: 800px; }

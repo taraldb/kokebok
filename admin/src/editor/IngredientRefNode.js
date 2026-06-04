@@ -57,13 +57,24 @@ export const IngredientRefNode = Node.create({
       const base = ing ? (ing.amount ?? 0) * factor : 0
       const unit = ing?.unit ?? ''
       const amtStr = base > 0 ? `${parseFloat(base.toFixed(4))} ${unit}`.trim() : ''
-      const label = displayOverride || (amtStr ? `${amtStr} (${name})` : `(${name})`)
 
       const dom = document.createElement('span')
       dom.className = 'ing-chip'
       dom.contentEditable = 'false'
       dom.title = `${name} × ${factor}`
-      dom.textContent = label || name
+
+      const qtyStr = displayOverride || amtStr
+      if (qtyStr) {
+        const qtyEl = document.createElement('span')
+        qtyEl.className = 'ing-chip-qty'
+        qtyEl.textContent = qtyStr
+        dom.appendChild(qtyEl)
+        dom.appendChild(document.createTextNode(' '))
+      }
+      const nameEl = document.createElement('span')
+      nameEl.className = 'ing-chip-name'
+      nameEl.textContent = name
+      dom.appendChild(nameEl)
 
       return { dom }
     }
