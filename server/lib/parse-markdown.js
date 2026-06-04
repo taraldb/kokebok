@@ -1,4 +1,5 @@
 const { nanoid } = require('nanoid');
+const { uniqueSlug } = require('./slugify');
 
 /**
  * Parse a markdown recipe into a partial Recipe object.
@@ -20,6 +21,7 @@ function parseMarkdown(text) {
   let currentSection = null;
   const ingredients = [];
   const steps = [];
+  const takenSlugs = new Set();
   const tips = [];
 
   // Norwegian decimal comma + English period
@@ -66,23 +68,29 @@ function parseMarkdown(text) {
           const [n, d] = frac.split('/').map(Number);
           amtStr = String(parseFloat(whole) + n / d);
         }
+        const ingName = m[3] ? m[3].trim() : m[2].trim()
+        const ingId = uniqueSlug(ingName, takenSlugs)
+        takenSlugs.add(ingId)
         ingredients.push({
-          id: nanoid(),
+          id: ingId,
           position: ingredients.length,
           amount: parseFloat(amtStr) || null,
           unit: m[2].trim().toLowerCase(),
-          name: m[3] ? m[3].trim() : m[2].trim(),
+          name: ingName,
         });
       } else {
         const mWords = ING_WORDS_RE.exec(line);
         if (mWords) {
           warnings.push(`Could not parse ingredient amount/unit from: "${line}"`);
+          const ingName2 = mWords[1].replace(/^[-*\s]+/, '').trim()
+          const ingId2 = uniqueSlug(ingName2, takenSlugs)
+          takenSlugs.add(ingId2)
           ingredients.push({
-            id: nanoid(),
+            id: ingId2,
             position: ingredients.length,
             amount: null,
             unit: 'stk',
-            name: mWords[1].replace(/^[-*\s]+/, '').trim(),
+            name: ingName2,
           });
         }
       }

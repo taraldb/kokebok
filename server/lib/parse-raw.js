@@ -1,6 +1,7 @@
 const yaml = require('js-yaml');
 const { yamlToRecipe } = require('./recipe-yaml');
 const { parseMarkdown } = require('./parse-markdown');
+const { uniqueSlug } = require('./slugify');
 
 /**
  * Try to parse raw input (JSON → YAML → Markdown).
@@ -37,13 +38,12 @@ function parseRaw(text) {
 
 function normalizeJsonRecipe(json) {
   const { nanoid } = require('nanoid');
-  const ingredients = (json.ingredients || []).map((i, pos) => ({
-    id: nanoid(),
-    position: pos,
-    name: i.name || '',
-    amount: i.amount ?? null,
-    unit: i.unit ?? null,
-  }));
+  const taken = new Set()
+  const ingredients = (json.ingredients || []).map((i, pos) => {
+    const id = uniqueSlug(i.name || '', taken)
+    taken.add(id)
+    return { id, position: pos, name: i.name || '', amount: i.amount ?? null, unit: i.unit ?? null }
+  });
 
   const steps = (json.steps || []).map((s, pos) => ({
     id: nanoid(),
