@@ -11,6 +11,8 @@ let recipes = []
 let editingId = null
 let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
 let ingredientSidebar = null
+let filterText = ''
+let filterCategory = ''
 const factorPopover = new FactorPopover()
 
 const pasteRawModal = new PasteRawModal({
@@ -57,17 +59,50 @@ function uniqueSlug(name, taken) {
 async function loadList() {
   const res = await fetch('/api/recipes')
   recipes = await res.json()
+  renderCategoryChips()
+  renderList()
+}
 
-  // Desktop sidebar list
+function renderCategoryChips() {
+  const categories = [...new Set(recipes.map(r => r.category).filter(Boolean))].sort()
+  const chips = document.getElementById('cat-chips')
+  if (!chips) return
+  chips.innerHTML = categories.map(cat => `
+    <button class="cat-chip ${filterCategory === cat ? 'active' : ''}" data-cat="${esc(cat)}">${cap(cat)}</button>
+  `).join('')
+  chips.querySelectorAll('.cat-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterCategory = filterCategory === btn.dataset.cat ? '' : btn.dataset.cat
+      renderCategoryChips()
+      renderList()
+    })
+  })
+}
+
+function renderList() {
+  const q = filterText.toLowerCase()
+  const filtered = recipes.filter(r => {
+    if (filterCategory && r.category !== filterCategory) return false
+    if (q && !r.title.toLowerCase().includes(q)) return false
+    return true
+  })
+
   const ul = document.getElementById('recipe-list')
-  ul.innerHTML = recipes.map(r => `
+  ul.innerHTML = filtered.map(r => `
     <li class="recipe-item ${editingId === r.id ? 'active' : ''}" data-id="${esc(r.id)}">${esc(r.title)}</li>
   `).join('')
   ul.querySelectorAll('.recipe-item').forEach(li => {
     li.addEventListener('click', () => loadRecipe(li.dataset.id))
   })
 
-  // Mobile select
+  const countEl = document.getElementById('recipe-count')
+  if (countEl) {
+    countEl.textContent = filtered.length === recipes.length
+      ? `${recipes.length} oppskrifter`
+      : `${filtered.length} av ${recipes.length}`
+  }
+
+  // Mobile select (always show all)
   const sel = document.getElementById('mobile-recipe-select')
   if (sel) {
     sel.innerHTML = '<option value="">— Velg oppskrift —</option>' +
@@ -155,6 +190,7 @@ function renderForm(r) {
         <button class="save-btn" id="save-btn">Lagre oppskrift</button>
         <button class="cancel-btn" id="cancel-btn">Avbryt</button>
         ${r.id ? `<button class="del-btn" id="del-btn">Slett</button>` : ''}
+        ${r.id ? `<a class="view-site-btn" href="/r/${esc(r.id)}" target="_blank">↗ Se på siden</a>` : ''}
       </div>
       <div class="status" id="status"></div>
     </div>
@@ -490,6 +526,11 @@ function newRecipe() {
 document.getElementById('new-btn').addEventListener('click', newRecipe)
 document.getElementById('paste-btn').addEventListener('click', () => pasteRawModal.show())
 
+document.getElementById('sidebar-search')?.addEventListener('input', e => {
+  filterText = e.target.value
+  renderList()
+})
+
 // Mobile bar
 document.getElementById('mobile-recipe-select')?.addEventListener('change', e => {
   if (e.target.value) loadRecipe(e.target.value)
@@ -497,4 +538,10 @@ document.getElementById('mobile-recipe-select')?.addEventListener('change', e =>
 document.getElementById('mobile-new-btn')?.addEventListener('click', newRecipe)
 document.getElementById('mobile-paste-btn')?.addEventListener('click', () => pasteRawModal.show())
 
-loadList()
+const urlId = new URLSearchParams(location.search).get('id')
+if (urlId) {
+  history.replaceState(null, '', location.pathname)
+  loadList().then(() => loadRecipe(urlId))
+} else {
+  loadList()
+}

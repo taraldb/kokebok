@@ -54,6 +54,7 @@ function renderIndexPage(recipes) {
       ${categoryBtns}
     </div>
     <button id="theme-toggle" aria-label="Bytt tema">☾</button>
+    <a href="/admin" class="admin-nav-btn" aria-label="Admin">⚙ Admin</a>
   </div>
 </nav>
 

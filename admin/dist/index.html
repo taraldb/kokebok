@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kokebok Admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -140,30 +142,51 @@
     .fp-actions button { padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; border: 1px solid var(--brown-light); background: none; }
     .fp-ok-btn { background: var(--green) !important; color: white !important; border-color: var(--green) !important; }
 
+    /* Sidebar nav enhancements */
+    .site-link { display: block; color: rgba(255,255,255,0.5); text-decoration: none; font-size: 0.78rem; margin-bottom: 14px; transition: color 0.15s; }
+    .site-link:hover { color: var(--cream); }
+    .sidebar-search { width: 100%; padding: 7px 10px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: var(--cream); font-size: 0.82rem; outline: none; margin-bottom: 8px; }
+    .sidebar-search::placeholder { color: rgba(255,255,255,0.4); }
+    .sidebar-search:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.15); }
+    .cat-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .cat-chip { padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); background: none; color: rgba(255,255,255,0.6); font-size: 0.72rem; cursor: pointer; transition: all 0.15s; line-height: 1.5; }
+    .cat-chip:hover { border-color: rgba(255,255,255,0.6); color: var(--cream); }
+    .cat-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .recipe-count { font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-bottom: 6px; }
+    .view-site-btn { padding: 10px 16px; background: none; border: 1px solid var(--brown-light); color: var(--muted); border-radius: 6px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; transition: border-color 0.15s, color 0.15s; }
+    .view-site-btn:hover { border-color: var(--brown); color: var(--brown); }
+
     /* Mobile top bar */
     .mobile-bar { display: none; background: var(--brown); padding: 12px 16px; gap: 8px; align-items: center; }
     .mobile-bar select { flex: 1; padding: 8px 10px; border-radius: 6px; border: none; font-size: 0.9rem; background: rgba(255,255,255,0.15); color: white; }
     .mobile-bar select option { background: var(--brown); color: white; }
     .mobile-bar button { padding: 8px 12px; border-radius: 6px; border: none; background: var(--accent); color: white; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+    .mobile-site-link { padding: 8px 10px; border-radius: 6px; color: rgba(255,255,255,0.6); font-size: 0.82rem; text-decoration: none; white-space: nowrap; }
+    .mobile-site-link:hover { color: white; }
     @media(max-width:600px) {
       .layout { grid-template-columns: 1fr; }
       .sidebar { display: none; }
       .mobile-bar { display: flex; }
     }
   </style>
-  <script type="module" crossorigin src="/admin/assets/index-BKRItiXN.js"></script>
+  <script type="module" crossorigin src="/admin/assets/index-BNyayvk_.js"></script>
 </head>
 <body>
 <div class="mobile-bar">
   <select id="mobile-recipe-select"><option value="">— Velg oppskrift —</option></select>
   <button id="mobile-new-btn">+ Ny</button>
   <button id="mobile-paste-btn">⤵ Lim inn</button>
+  <a href="/" class="mobile-site-link">← Side</a>
 </div>
 <div class="layout">
   <aside class="sidebar">
+    <a class="site-link" href="/">← Kokebok</a>
     <button class="new-btn" id="new-btn">+ Ny oppskrift</button>
     <button class="paste-btn" id="paste-btn">⤵ Lim inn</button>
     <h2>Oppskrifter</h2>
+    <input class="sidebar-search" id="sidebar-search" type="search" placeholder="Søk…" autocomplete="off" />
+    <div class="cat-chips" id="cat-chips"></div>
+    <div class="recipe-count" id="recipe-count"></div>
     <ul class="recipe-list" id="recipe-list"></ul>
   </aside>
   <main class="main">
