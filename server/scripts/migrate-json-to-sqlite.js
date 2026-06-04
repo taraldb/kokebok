@@ -7,6 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const { nanoid } = require('nanoid');
+const { uniqueSlug } = require('../lib/slugify');
 const { migrate } = require('../db/migrate');
 const { upsertRecipe, getRecipe } = require('../db/recipes');
 const { htmlToProsemirror } = require('../lib/html-to-prosemirror');
@@ -24,14 +25,13 @@ function log(msg) {
 function convertRecipe(json) {
   const allWarnings = [];
 
-  // Build ingredient list with stable nanoid ids
-  const ingredients = (json.ingredients || []).map((ing, i) => ({
-    id: nanoid(),
-    position: i,
-    name: ing.name,
-    amount: ing.amount ?? null,
-    unit: ing.unit ?? null,
-  }));
+  // Build ingredient list with name-based slug ids
+  const taken = new Set();
+  const ingredients = (json.ingredients || []).map((ing, i) => {
+    const id = uniqueSlug(ing.name || '', taken);
+    taken.add(id);
+    return { id, position: i, name: ing.name, amount: ing.amount ?? null, unit: ing.unit ?? null };
+  });
 
   // Convert steps
   const steps = (json.steps || []).map((step, i) => {
