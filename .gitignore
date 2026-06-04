@@ -2,3 +2,12 @@ node_modules/
 .DS_Store
 *.log
 .idea/
+
+# Recipe data — personal content, not part of the public repo
+recipes/
+data/
+
+# Prerendered output — generated at runtime, contains recipe content
+public/index.html
+public/r/
+public/recipes/

@@ -1,0 +1,15 @@
+node_modules
+admin/node_modules
+.git
+.idea
+.claude
+.vscode
+*.log
+data/
+public/r/
+public/index.html
+public/recipes/recipe-index.json
+kokebok.db
+*.db
+*.db-wal
+*.db-shm
