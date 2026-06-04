@@ -42,6 +42,7 @@ export class IngredientSidebar {
       li.innerHTML = `
         <span class="ing-sidebar-name">${esc(ing.name)}</span>
         <span class="ing-total">${ing.amount != null ? `${ing.amount} ${ing.unit || ''}` : '—'}</span>
+        <span class="ing-remaining" data-rem-id="${esc(ing.id)}"></span>
         <span class="ing-sum-badge" data-sum-id="${esc(ing.id)}">—</span>
       `
       makeDraggable(li, ing.id)
@@ -54,16 +55,25 @@ export class IngredientSidebar {
     const container = this._container
     this._ingredients.forEach(ing => {
       const badge = container.querySelector(`[data-sum-id="${ing.id}"]`)
+      const remEl = container.querySelector(`[data-rem-id="${ing.id}"]`)
       if (!badge) return
       const sum = this._sums[ing.id] ?? 0
       if (sum === 0) {
         badge.textContent = '—'
         badge.className = 'ing-sum-badge sum-grey'
+        if (remEl) remEl.textContent = ''
       } else {
         const display = sum.toFixed(2).replace(/\.?0+$/, '')
         badge.textContent = `Σ ${display}`
         const diff = Math.abs(sum - 1.0)
         badge.className = 'ing-sum-badge ' + (diff <= 0.02 ? 'sum-green' : 'sum-orange')
+        if (remEl && ing.amount != null) {
+          const rem = ing.amount * (1 - sum)
+          const remDisplay = parseFloat(rem.toFixed(4))
+          remEl.textContent = rem > 0.001 ? `rest: ${remDisplay} ${ing.unit || ''}`.trim() : ''
+        } else if (remEl) {
+          remEl.textContent = ''
+        }
       }
     })
   }

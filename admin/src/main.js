@@ -233,6 +233,9 @@ function appendStepEditor(container, step, ingredients) {
              value="${step?.timer_seconds || ''}" data-step-timer />
       <button class="rm-btn" data-rm-step>×</button>
     </div>
+    <div class="step-toolbar">
+      <button class="step-tool-btn" data-cmd="bold" title="Fet (Ctrl+B)"><b>B</b></button>
+    </div>
     <div class="step-editor-mount" id="${editorId}"></div>
   `
   container.appendChild(wrapper)
@@ -240,6 +243,7 @@ function appendStepEditor(container, step, ingredients) {
   wrapper.querySelector('[data-rm-step]').addEventListener('click', () => {
     const idx = stepEditors.findIndex(e => e.wrapperId === wrapperId)
     if (idx !== -1) { stepEditors[idx].editor.destroy(); stepEditors.splice(idx, 1) }
+    if (wrapper._chipMousedown) document.removeEventListener('mousedown', wrapper._chipMousedown, true)
     wrapper.remove()
   })
 
@@ -250,39 +254,56 @@ function appendStepEditor(container, step, ingredients) {
     onUpdate: () => recomputeSums(),
   })
 
+  // Bold toolbar button
+  wrapper.querySelector('[data-cmd="bold"]').addEventListener('click', () => {
+    editor.editor.chain().focus().toggleBold().run()
+  })
+
   // Wire drop target for ingredient sidebar drag
   wireDropTarget(mountEl, editor, {
     onInsert: () => recomputeSums(),
   })
 
   // Click on ing-chip → factor popover
-  mountEl.addEventListener('click', e => {
-    const chip = e.target.closest('.ing-chip')
-    if (!chip) return
+  // Use mousedown capture on document so nothing can swallow the event
+  const chipMousedown = e => {
+    const chip = e.target.closest?.('.ing-chip')
+    if (!chip || !editor.editor.view.dom.contains(chip)) return
+    e.preventDefault()
+    e.stopPropagation()  // prevent any other handler from interfering
     const pm = editor.editor.view
-    // Find the node position by traversing the document
-    let foundPos = null
+    // Find document position by scanning the doc for the chip's DOM node
+    let nodePos = null
     pm.state.doc.descendants((node, pos) => {
-      if (node.type.name === 'ingredientRef' && pm.nodeDOM(pos) === chip) {
-        foundPos = pos
-        return false
+      if (nodePos !== null) return false
+      if (node.type.name === 'ingredientRef') {
+        const domAtPos = pm.nodeDOM(pos)
+        if (domAtPos === chip || (domAtPos && domAtPos.contains && domAtPos.contains(chip))) {
+          nodePos = pos
+          return false
+        }
       }
     })
-    if (foundPos === null) return
-    const node = pm.state.doc.nodeAt(foundPos)
+    if (nodePos === null) return
+    const node = pm.state.doc.nodeAt(nodePos)
     if (!node) return
     const { ingredientId, factor } = node.attrs
     const ing = ingredients.find(i => i.id === ingredientId)
     const rect = chip.getBoundingClientRect()
+    // position: fixed uses viewport coords — no scroll offset needed
     factorPopover.show(ing || null, factor, newFactor => {
       editor.editor.chain().focus()
         .command(({ tr, state }) => {
-          tr.setNodeMarkup(foundPos, null, { ...node.attrs, factor: newFactor })
+          const currentNode = state.doc.nodeAt(nodePos)
+          if (!currentNode) return false
+          tr.setNodeMarkup(nodePos, null, { ...currentNode.attrs, factor: newFactor })
           return true
         }).run()
       recomputeSums()
-    }, { x: rect.left + window.scrollX, y: rect.bottom + window.scrollY + 4 })
-  })
+    }, { x: rect.left, y: rect.bottom + 4 })
+  }
+  document.addEventListener('mousedown', chipMousedown, true)
+  wrapper._chipMousedown = chipMousedown
 
   const stepEntry = {
     wrapperId,

@@ -361,6 +361,13 @@ section:nth-child(4) { animation-delay: 0.3s; }
   line-height: 1.65;
 }
 
+.step-text strong,
+.step-text b,
+.step-text .ing-ref {
+  font-weight: 700;
+  color: var(--text);
+}
+
 /* ── Timer ── */
 .timer {
   margin-top: 14px;
@@ -721,6 +728,12 @@ footer {
   font-size: clamp(1rem, 2.5vw, 1.25rem);
   color: var(--text);
   line-height: 1.75;
+}
+
+.cm-step-text strong,
+.cm-step-text b,
+.cm-step-text .ing-ref {
+  font-weight: 700;
 }
 
 .cm-timer-row {

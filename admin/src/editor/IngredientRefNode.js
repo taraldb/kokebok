@@ -56,9 +56,8 @@ export const IngredientRefNode = Node.create({
       const name = ing?.name ?? ingredientId ?? '?'
       const base = ing ? (ing.amount ?? 0) * factor : 0
       const unit = ing?.unit ?? ''
-      const label = displayOverride || (factor !== 1
-        ? `${base} ${unit} ${name}`.trim()
-        : `${base} ${unit} ${name}`.trim())
+      const amtStr = base > 0 ? `${parseFloat(base.toFixed(4))} ${unit}`.trim() : ''
+      const label = displayOverride || (amtStr ? `${amtStr} (${name})` : `(${name})`)
 
       const dom = document.createElement('span')
       dom.className = 'ing-chip'

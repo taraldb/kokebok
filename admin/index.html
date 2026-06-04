@@ -71,9 +71,13 @@
     .step-header { display: flex; gap: 8px; margin-bottom: 8px; }
     .step-title-input { flex: 1; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
     .step-timer-input { flex: 0 0 120px; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
+    .step-toolbar { display: flex; gap: 4px; margin-bottom: 4px; }
+    .step-tool-btn { padding: 2px 9px; border: 1px solid var(--brown-light); border-radius: 4px; background: var(--white); cursor: pointer; font-size: 0.85rem; color: var(--brown); }
+    .step-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
     .step-editor-mount { border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); padding: 8px 12px; min-height: 60px; }
     .tiptap { outline: none; }
     .tiptap p { margin: 0; }
+    .tiptap strong { font-weight: 700; }
 
     /* Ingredient chip */
     .ing-chip {
@@ -90,6 +94,7 @@
     .ing-sidebar-item:hover { border-color: var(--accent); }
     .ing-sidebar-name { flex: 1; }
     .ing-total { color: var(--muted); }
+    .ing-remaining { font-size: 0.75rem; color: var(--accent); font-style: italic; }
     .ing-sum-badge { font-size: 0.75rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; min-width: 32px; text-align: center; }
     .sum-grey   { background: #e0e0e0; color: #666; }
     .sum-green  { background: #d4edda; color: #155724; }

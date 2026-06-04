@@ -73,7 +73,7 @@ export class FactorPopover {
     setTimeout(() => {
       this._dismiss = e => { if (!this._el.contains(e.target)) this.hide() }
       document.addEventListener('mousedown', this._dismiss)
-    }, 10)
+    }, 50)
   }
 
   hide() {
