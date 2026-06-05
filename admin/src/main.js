@@ -445,7 +445,7 @@ function populateIngRow(row, ingredients) {
   const sorted = [...ingredients].sort((a, b) => {
     const aEmpty = (sums[a.id] ?? 0) === 0
     const bEmpty = (sums[b.id] ?? 0) === 0
-    return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1
+    return aEmpty === bEmpty ? 0 : aEmpty ? -1 : 1
   })
 
   row.innerHTML = ''
