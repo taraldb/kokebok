@@ -184,9 +184,12 @@
       white-space: nowrap; -webkit-tap-highlight-color: transparent;
       font-family: inherit; color: var(--text);
     }
-    .step-ing-pill:active { background: var(--brown-light); }
+    .step-ing-pill:active { opacity: 0.75; }
     .step-ing-pill-name { font-weight: 500; }
-    .step-ing-pill-amt { color: var(--muted); font-size: 0.78rem; }
+    .step-ing-pill-rem { font-size: 0.75rem; opacity: 0.8; }
+    .step-ing-pill.pill-grey  { background: var(--cream); border-color: var(--brown-light); color: var(--text); }
+    .step-ing-pill.pill-orange { background: #fff3cd; border-color: #c8962a; color: #7a5200; }
+    .step-ing-pill.pill-green  { background: #d4edda; border-color: #4a6741; color: #155724; }
 
     @media(max-width:600px) {
       .layout { grid-template-columns: 1fr; }

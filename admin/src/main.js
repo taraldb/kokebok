@@ -14,6 +14,8 @@ let ingredientSidebar = null
 let lastFocusedStepEditor = null
 let activeIngRow = null
 let ingRowHideTimer = null
+let currentSums = {}
+let currentIngredients = []
 let filterText = ''
 let filterCategory = ''
 const factorPopover = new FactorPopover()
@@ -200,6 +202,8 @@ function renderForm(r) {
   `
 
   const ingredients = r.ingredients || []
+  currentIngredients = ingredients
+  currentSums = {}
 
   // Render ingredient sidebar inside the steps layout column
   const sidebarContainer = document.getElementById('ing-sidebar-col')
@@ -401,7 +405,9 @@ function recomputeSums() {
     }
     traverse(doc)
   }
+  currentSums = sums
   ingredientSidebar.updateSums(sums)
+  updateAllIngRows(currentIngredients)
 }
 
 function destroyEditors() {
@@ -411,6 +417,8 @@ function destroyEditors() {
   lastFocusedStepEditor = null
   activeIngRow = null
   cancelIngRowHide()
+  currentSums = {}
+  currentIngredients = []
 }
 
 function reorderStep(wrapperId, direction) {
@@ -431,16 +439,38 @@ function reorderStep(wrapperId, direction) {
 // ── Mobile inline ingredient row ──────────────────────────────────────────────
 
 function populateIngRow(row, ingredients) {
+  const sums = currentSums
+
+  // Sort: used ingredients first, unused last
+  const sorted = [...ingredients].sort((a, b) => {
+    const aEmpty = (sums[a.id] ?? 0) === 0
+    const bEmpty = (sums[b.id] ?? 0) === 0
+    return aEmpty === bEmpty ? 0 : aEmpty ? 1 : -1
+  })
+
   row.innerHTML = ''
-  ingredients.forEach(ing => {
+  sorted.forEach(ing => {
+    const sum = sums[ing.id] ?? 0
+    const isDone = Math.abs(sum - 1.0) <= 0.02
+    const remaining = 1 - sum
+
+    const colorClass = sum === 0 ? 'pill-grey' : (isDone ? 'pill-green' : 'pill-orange')
+
+    let remText = ''
+    if (!isDone && ing.amount != null) {
+      const remAmt = parseFloat((ing.amount * Math.max(0, remaining)).toFixed(4))
+      if (remAmt > 0) remText = `${remAmt}${ing.unit ? ' ' + ing.unit : ''}`
+    }
+
+    const insertFactor = (!isDone && remaining > 0.001) ? remaining : 1.0
+
     const btn = document.createElement('button')
-    btn.className = 'step-ing-pill'
-    const amt = ing.amount != null ? `${ing.amount}${ing.unit ? ' ' + ing.unit : ''}` : ''
-    btn.innerHTML = `<span class="step-ing-pill-name">${esc(ing.name)}</span>${amt ? `<span class="step-ing-pill-amt">${esc(amt)}</span>` : ''}`
+    btn.className = `step-ing-pill ${colorClass}`
+    btn.innerHTML = `<span class="step-ing-pill-name">${esc(ing.name)}</span>${remText ? `<span class="step-ing-pill-rem">${esc(remText)}</span>` : ''}`
     btn.addEventListener('click', () => {
       cancelIngRowHide()
       if (lastFocusedStepEditor) {
-        lastFocusedStepEditor.insertIngredientRef(ing.id, 1.0, null)
+        lastFocusedStepEditor.insertIngredientRef(ing.id, insertFactor, null)
         recomputeSums()
       }
     })
@@ -449,7 +479,8 @@ function populateIngRow(row, ingredients) {
 }
 
 function updateAllIngRows(ingredients) {
-  stepEditors.forEach(e => { if (e.ingRow) populateIngRow(e.ingRow, ingredients) })
+  if (ingredients.length) currentIngredients = ingredients
+  stepEditors.forEach(e => { if (e.ingRow) populateIngRow(e.ingRow, currentIngredients) })
 }
 
 function scheduleIngRowHide() {
