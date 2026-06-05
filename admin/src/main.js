@@ -12,7 +12,8 @@ let editingId = null
 let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
 let ingredientSidebar = null
 let lastFocusedStepEditor = null
-let ingPickerHideTimer = null
+let activeIngRow = null
+let ingRowHideTimer = null
 let filterText = ''
 let filterCategory = ''
 const factorPopover = new FactorPopover()
@@ -210,7 +211,6 @@ function renderForm(r) {
       }
     },
   })
-  updateIngPicker(ingredients)
 
   // Render TipTap step editors
   const stepRowsEl = document.getElementById('step-rows')
@@ -297,10 +297,16 @@ function appendStepEditor(container, step, ingredients) {
     btn.addEventListener('click', () => reorderStep(wrapperId, btn.dataset.dir))
   )
 
+  const ingRow = document.createElement('div')
+  ingRow.className = 'step-ing-row'
+  populateIngRow(ingRow, ingredients)
+  wrapper.appendChild(ingRow)
+
   wrapper.querySelector('[data-rm-step]').addEventListener('click', () => {
     const idx = stepEditors.findIndex(e => e.wrapperId === wrapperId)
     if (idx !== -1) { stepEditors[idx].editor.destroy(); stepEditors.splice(idx, 1) }
     if (wrapper._chipMousedown) document.removeEventListener('mousedown', wrapper._chipMousedown, true)
+    if (activeIngRow === ingRow) { activeIngRow = null; cancelIngRowHide() }
     wrapper.remove()
   })
 
@@ -309,8 +315,14 @@ function appendStepEditor(container, step, ingredients) {
     ingredients,
     initialDoc: step?.content_doc || null,
     onUpdate: () => recomputeSums(),
-    onFocus: () => { lastFocusedStepEditor = editor; cancelHideIngPicker(); showIngPicker() },
-    onBlur:  () => scheduleHideIngPicker(),
+    onFocus: () => {
+      lastFocusedStepEditor = editor
+      cancelIngRowHide()
+      if (activeIngRow && activeIngRow !== ingRow) activeIngRow.classList.remove('active')
+      activeIngRow = ingRow
+      ingRow.classList.add('active')
+    },
+    onBlur:  () => scheduleIngRowHide(),
   })
 
   // Bold toolbar button
@@ -368,6 +380,7 @@ function appendStepEditor(container, step, ingredients) {
     wrapperId,
     wrapper,
     editor,
+    ingRow,
     getTitle: () => wrapper.querySelector('[data-step-title]').value.trim(),
     getTimer: () => parseInt(wrapper.querySelector('[data-step-timer]').value) || 0,
   }
@@ -396,8 +409,8 @@ function destroyEditors() {
   stepEditors = []
   ingredientSidebar = null
   lastFocusedStepEditor = null
-  cancelHideIngPicker()
-  document.getElementById('ing-picker-sheet')?.classList.add('hidden')
+  activeIngRow = null
+  cancelIngRowHide()
 }
 
 function reorderStep(wrapperId, direction) {
@@ -415,40 +428,38 @@ function reorderStep(wrapperId, direction) {
   stepEditors.forEach(e => container.appendChild(e.wrapper))
 }
 
-// ── Mobile ingredient picker sheet ───────────────────────────────────────────
+// ── Mobile inline ingredient row ──────────────────────────────────────────────
 
-function updateIngPicker(ingredients) {
-  const list = document.getElementById('ing-picker-list')
-  if (!list) return
-  list.innerHTML = ''
+function populateIngRow(row, ingredients) {
+  row.innerHTML = ''
   ingredients.forEach(ing => {
-    const li = document.createElement('li')
-    li.className = 'ing-picker-item'
+    const btn = document.createElement('button')
+    btn.className = 'step-ing-pill'
     const amt = ing.amount != null ? `${ing.amount}${ing.unit ? ' ' + ing.unit : ''}` : ''
-    li.innerHTML = `<span class="ing-picker-name">${esc(ing.name)}</span><span class="ing-picker-amt">${esc(amt)}</span>`
-    li.addEventListener('click', () => {
+    btn.innerHTML = `<span class="step-ing-pill-name">${esc(ing.name)}</span>${amt ? `<span class="step-ing-pill-amt">${esc(amt)}</span>` : ''}`
+    btn.addEventListener('click', () => {
+      cancelIngRowHide()
       if (lastFocusedStepEditor) {
         lastFocusedStepEditor.insertIngredientRef(ing.id, 1.0, null)
         recomputeSums()
       }
     })
-    list.appendChild(li)
+    row.appendChild(btn)
   })
 }
 
-function showIngPicker() {
-  if (window.innerWidth > 600) return
-  document.getElementById('ing-picker-sheet')?.classList.remove('hidden')
+function updateAllIngRows(ingredients) {
+  stepEditors.forEach(e => { if (e.ingRow) populateIngRow(e.ingRow, ingredients) })
 }
 
-function scheduleHideIngPicker() {
-  ingPickerHideTimer = setTimeout(() => {
-    document.getElementById('ing-picker-sheet')?.classList.add('hidden')
+function scheduleIngRowHide() {
+  ingRowHideTimer = setTimeout(() => {
+    if (activeIngRow) { activeIngRow.classList.remove('active'); activeIngRow = null }
   }, 200)
 }
 
-function cancelHideIngPicker() {
-  if (ingPickerHideTimer) { clearTimeout(ingPickerHideTimer); ingPickerHideTimer = null }
+function cancelIngRowHide() {
+  if (ingRowHideTimer) { clearTimeout(ingRowHideTimer); ingRowHideTimer = null }
 }
 
 // ── HTML row helpers ──────────────────────────────────────────────────────────
@@ -609,7 +620,7 @@ async function save() {
     editingId = id
     stepEditors.forEach((e, i) => { e.editor.setIngredients(ingredients); e.editor.setDoc(fixedDocs[i]) })
     if (ingredientSidebar) { ingredientSidebar.update(ingredients); recomputeSums() }
-    updateIngPicker(ingredients)
+    updateAllIngRows(ingredients)
     showStatus('Oppskrift lagret!', true)
     await loadList()
   } else {
@@ -661,10 +672,6 @@ document.getElementById('mobile-recipe-select')?.addEventListener('change', e =>
 document.getElementById('mobile-new-btn')?.addEventListener('click', newRecipe)
 document.getElementById('mobile-paste-btn')?.addEventListener('click', () => pasteRawModal.show())
 
-// Ingredient picker sheet
-document.getElementById('ing-picker-close')?.addEventListener('click', () => {
-  document.getElementById('ing-picker-sheet')?.classList.add('hidden')
-})
 
 const urlId = new URLSearchParams(location.search).get('id')
 if (urlId) {
