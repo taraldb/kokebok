@@ -10,7 +10,7 @@ export class StepEditor {
    * @param {Object} [options.initialDoc]
    * @param {Function} [options.onUpdate]
    */
-  constructor(container, { ingredients = [], initialDoc = null, onUpdate, onFocus } = {}) {
+  constructor(container, { ingredients = [], initialDoc = null, onUpdate, onFocus, onBlur } = {}) {
     this.editor = new Editor({
       element: container,
       extensions: [
@@ -29,6 +29,7 @@ export class StepEditor {
       content: initialDoc || { type: 'doc', content: [{ type: 'paragraph' }] },
       onUpdate: onUpdate ? ({ editor }) => onUpdate(editor.getJSON()) : undefined,
       onFocus: onFocus ? () => onFocus() : undefined,
+      onBlur:  onBlur  ? () => onBlur()  : undefined,
     })
   }
 

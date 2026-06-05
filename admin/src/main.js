@@ -12,6 +12,7 @@ let editingId = null
 let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
 let ingredientSidebar = null
 let lastFocusedStepEditor = null
+let ingPickerHideTimer = null
 let filterText = ''
 let filterCategory = ''
 const factorPopover = new FactorPopover()
@@ -209,6 +210,7 @@ function renderForm(r) {
       }
     },
   })
+  updateIngPicker(ingredients)
 
   // Render TipTap step editors
   const stepRowsEl = document.getElementById('step-rows')
@@ -307,7 +309,8 @@ function appendStepEditor(container, step, ingredients) {
     ingredients,
     initialDoc: step?.content_doc || null,
     onUpdate: () => recomputeSums(),
-    onFocus: () => { lastFocusedStepEditor = editor },
+    onFocus: () => { lastFocusedStepEditor = editor; cancelHideIngPicker(); showIngPicker() },
+    onBlur:  () => scheduleHideIngPicker(),
   })
 
   // Bold toolbar button
@@ -393,6 +396,8 @@ function destroyEditors() {
   stepEditors = []
   ingredientSidebar = null
   lastFocusedStepEditor = null
+  cancelHideIngPicker()
+  document.getElementById('ing-picker-sheet')?.classList.add('hidden')
 }
 
 function reorderStep(wrapperId, direction) {
@@ -408,6 +413,42 @@ function reorderStep(wrapperId, direction) {
   const [moved] = stepEditors.splice(idx, 1)
   stepEditors.splice(newIdx, 0, moved)
   stepEditors.forEach(e => container.appendChild(e.wrapper))
+}
+
+// ── Mobile ingredient picker sheet ───────────────────────────────────────────
+
+function updateIngPicker(ingredients) {
+  const list = document.getElementById('ing-picker-list')
+  if (!list) return
+  list.innerHTML = ''
+  ingredients.forEach(ing => {
+    const li = document.createElement('li')
+    li.className = 'ing-picker-item'
+    const amt = ing.amount != null ? `${ing.amount}${ing.unit ? ' ' + ing.unit : ''}` : ''
+    li.innerHTML = `<span class="ing-picker-name">${esc(ing.name)}</span><span class="ing-picker-amt">${esc(amt)}</span>`
+    li.addEventListener('click', () => {
+      if (lastFocusedStepEditor) {
+        lastFocusedStepEditor.insertIngredientRef(ing.id, 1.0, null)
+        recomputeSums()
+      }
+    })
+    list.appendChild(li)
+  })
+}
+
+function showIngPicker() {
+  if (window.innerWidth > 600) return
+  document.getElementById('ing-picker-sheet')?.classList.remove('hidden')
+}
+
+function scheduleHideIngPicker() {
+  ingPickerHideTimer = setTimeout(() => {
+    document.getElementById('ing-picker-sheet')?.classList.add('hidden')
+  }, 200)
+}
+
+function cancelHideIngPicker() {
+  if (ingPickerHideTimer) { clearTimeout(ingPickerHideTimer); ingPickerHideTimer = null }
 }
 
 // ── HTML row helpers ──────────────────────────────────────────────────────────
@@ -568,6 +609,7 @@ async function save() {
     editingId = id
     stepEditors.forEach((e, i) => { e.editor.setIngredients(ingredients); e.editor.setDoc(fixedDocs[i]) })
     if (ingredientSidebar) { ingredientSidebar.update(ingredients); recomputeSums() }
+    updateIngPicker(ingredients)
     showStatus('Oppskrift lagret!', true)
     await loadList()
   } else {
@@ -618,6 +660,11 @@ document.getElementById('mobile-recipe-select')?.addEventListener('change', e =>
 })
 document.getElementById('mobile-new-btn')?.addEventListener('click', newRecipe)
 document.getElementById('mobile-paste-btn')?.addEventListener('click', () => pasteRawModal.show())
+
+// Ingredient picker sheet
+document.getElementById('ing-picker-close')?.addEventListener('click', () => {
+  document.getElementById('ing-picker-sheet')?.classList.add('hidden')
+})
 
 const urlId = new URLSearchParams(location.search).get('id')
 if (urlId) {
