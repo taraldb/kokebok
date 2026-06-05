@@ -178,9 +178,9 @@
     }
     .step-ing-row.active::-webkit-scrollbar { display: none; }
     .step-ing-pill {
-      flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
-      padding: 6px 12px; background: var(--cream); border: 1px solid var(--brown-light);
-      border-radius: 16px; cursor: pointer; font-size: 0.82rem; min-height: 36px;
+      flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
+      padding: 4px 8px; background: var(--cream); border: 1px solid var(--brown-light);
+      border-radius: 12px; cursor: pointer; font-size: 0.78rem; min-height: 30px;
       white-space: nowrap; -webkit-tap-highlight-color: transparent;
       font-family: inherit; color: var(--text);
     }
@@ -203,9 +203,11 @@
       /* Single-column field rows */
       .row { grid-template-columns: 1fr; }
 
-      /* Ingredient rows: wrap desc to second line */
+      /* Ingredient rows: wrap desc to second line, tighten amount/unit */
       .dynamic-row { flex-wrap: wrap; }
       .dynamic-row .desc-input { flex: 1 1 100%; }
+      .amount-input { flex: 0 0 58px !important; }
+      .unit-input   { flex: 0 0 46px !important; }
 
       /* Step header: title full-width, rest wraps to second line */
       .step-header { flex-wrap: wrap; }
