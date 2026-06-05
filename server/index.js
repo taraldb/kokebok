@@ -33,12 +33,13 @@ migrate();
   }
 })();
 
-// Auto-rerender when template changes
+// Auto-rerender when template changes or output is missing (e.g. after container replacement)
 (function checkTemplateHash() {
   const current = computeTemplateHash();
   const stored  = getTemplateHash();
-  if (current !== stored) {
-    console.log('Template changed — prerendering all recipes…');
+  const indexMissing = !fs.existsSync(path.join(PUBLIC_DIR, 'index.html'));
+  if (current !== stored || indexMissing) {
+    console.log(indexMissing ? 'Index missing — prerendering all recipes…' : 'Template changed — prerendering all recipes…');
     const { count, ms } = prerenderAll();
     setTemplateHash(current);
     console.log(`Prerendered ${count} recipes in ${ms}ms`);
