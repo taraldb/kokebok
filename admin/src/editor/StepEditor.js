@@ -1,5 +1,6 @@
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
 import { IngredientRefNode } from './IngredientRefNode.js'
 
 export class StepEditor {
@@ -24,6 +25,7 @@ export class StepEditor {
           horizontalRule: false,
           strike: false,
         }),
+        Underline,
         IngredientRefNode.configure({ ingredients }),
       ],
       content: initialDoc || { type: 'doc', content: [{ type: 'paragraph' }] },

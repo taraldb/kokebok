@@ -48,7 +48,7 @@ function docToHtml(doc, ingredients) {
     }
 
     if (node.type === 'doc') {
-      return (node.content || []).map(nodeToHtml).join('');
+      return (node.content || []).map(nodeToHtml).join('<br>');
     }
 
     // Unknown nodes: recurse into children

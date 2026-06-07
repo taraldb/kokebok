@@ -228,6 +228,14 @@ function renderForm(r) {
     document.getElementById('meta-rows').insertAdjacentHTML('beforeend', metaRowHtml()))
   document.getElementById('add-ing-btn').addEventListener('click', () =>
     document.getElementById('ingredient-rows').insertAdjacentHTML('beforeend', ingredientRowHtml()))
+  document.getElementById('ingredient-rows').addEventListener('click', e => {
+    const btn = e.target.closest('[data-ing-dir]')
+    if (!btn) return
+    const row = btn.closest('[data-ing-row]')
+    const dir = btn.dataset.ingDir
+    if (dir === 'up') { const prev = row.previousElementSibling; if (prev) prev.before(row) }
+    else              { const next = row.nextElementSibling;     if (next) next.after(row)  }
+  })
   document.getElementById('add-step-btn').addEventListener('click', () =>
     appendStepEditor(stepRowsEl, null, getCurrentIngredients()))
   document.getElementById('add-tip-btn').addEventListener('click', () =>
@@ -291,7 +299,9 @@ function appendStepEditor(container, step, ingredients) {
       <button class="rm-btn" data-rm-step>×</button>
     </div>
     <div class="step-toolbar">
-      <button class="step-tool-btn" data-cmd="bold" title="Fet (Ctrl+B)"><b>B</b></button>
+      <button class="step-tool-btn" data-cmd="bold"      title="Fet (Ctrl+B)"><b>B</b></button>
+      <button class="step-tool-btn" data-cmd="italic"    title="Kursiv (Ctrl+I)"><i>I</i></button>
+      <button class="step-tool-btn" data-cmd="underline" title="Understrek (Ctrl+U)"><u>U</u></button>
     </div>
     <div class="step-editor-mount" id="${editorId}"></div>
   `
@@ -329,10 +339,13 @@ function appendStepEditor(container, step, ingredients) {
     onBlur:  () => scheduleIngRowHide(),
   })
 
-  // Bold toolbar button
-  wrapper.querySelector('[data-cmd="bold"]').addEventListener('click', () => {
-    editor.editor.chain().focus().toggleBold().run()
-  })
+  // Toolbar buttons
+  wrapper.querySelector('[data-cmd="bold"]').addEventListener('click', () =>
+    editor.editor.chain().focus().toggleBold().run())
+  wrapper.querySelector('[data-cmd="italic"]').addEventListener('click', () =>
+    editor.editor.chain().focus().toggleItalic().run())
+  wrapper.querySelector('[data-cmd="underline"]').addEventListener('click', () =>
+    editor.editor.chain().focus().toggleUnderline().run())
 
   // Wire drop target for ingredient sidebar drag
   wireDropTarget(mountEl, editor, {
@@ -507,12 +520,18 @@ function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = ''
   const safeId = id || genId()
   return `<div class="dynamic-row" data-ing-row>
     <input type="hidden" data-ing-id="${esc(safeId)}" data-ing-id-val value="${esc(safeId)}" />
+    <div class="step-reorder-btns">
+      <button class="step-reorder-btn" data-ing-dir="up"   title="Opp">↑</button>
+      <button class="step-reorder-btn" data-ing-dir="down" title="Ned">↓</button>
+    </div>
     <input class="amount-input" type="number" step="any" placeholder="700"
            value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount />
     <input class="unit-input" placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
-    <input class="desc-input" placeholder="Beskrivelse (valgfri)" value="${esc(desc||'')}" data-ing-desc />
-    <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+    <div class="ing-desc-row">
+      <input class="desc-input" placeholder="Beskrivelse (valgfri)" value="${esc(desc||'')}" data-ing-desc />
+      <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+    </div>
   </div>`
 }
 
