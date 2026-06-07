@@ -32,7 +32,7 @@ id: kebab-case-id          # must be unique, lowercase, no spaces
 title: "Norsk tittel"
 label: "Kategori · Nøkkelord"          # optional
 description: "1–2 setninger om retten."
-category: middag           # surdeig|brød|middag|dessert|suppe|kaker|frokost|fisk|vegetar|snacks
+category: middag           # frokost|middag|dessert|tilbehør|snacks
 tags: [tag1, tag2]         # lowercase Norwegian nouns
 meta:
   - label: "Aktiv tid"

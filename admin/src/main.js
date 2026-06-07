@@ -5,7 +5,7 @@ import { IngredientSidebar } from './components/IngredientSidebar.js'
 import { RawModeToggle } from './components/RawModeToggle.js'
 import { PasteRawModal } from './components/PasteRawModal.js'
 
-const CATEGORIES = ['surdeig','brød','middag','dessert','suppe','kaker','frokost','fisk','vegetar','snacks']
+const CATEGORIES = ['frokost','middag','dessert','tilbehør','snacks']
 
 let recipes = []
 let editingId = null

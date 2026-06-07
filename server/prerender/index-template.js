@@ -48,11 +48,6 @@ function renderIndexPage(recipes) {
 <nav class="nav">
   <div class="nav-inner">
     <a href="/" class="nav-logo"><img src="/assets/logo.png" alt="" class="nav-logo-img" />Kokebok</a>
-    <div class="nav-divider"></div>
-    <div class="nav-links" id="nav-links">
-      <button class="nav-link active" data-category="">Alle</button>
-      ${categoryBtns}
-    </div>
     <button id="theme-toggle" aria-label="Bytt tema">☾</button>
     <a href="/admin" class="admin-nav-btn" aria-label="Admin">⚙ Admin</a>
   </div>
@@ -67,6 +62,11 @@ function renderIndexPage(recipes) {
   <div class="index-controls">
     <input class="search-bar" type="search" placeholder="Søk etter oppskrift…"
            id="search" autocomplete="off" />
+  </div>
+
+  <div class="filter-chips">
+    <button class="nav-link active" data-category="">Alle</button>
+    ${categoryBtns}
   </div>
 
   <div class="recipe-grid" id="recipe-grid">

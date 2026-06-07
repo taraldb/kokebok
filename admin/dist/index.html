@@ -46,6 +46,7 @@
     .dynamic-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
     .amount-input { flex: 0 0 80px !important; }
     .unit-input   { flex: 0 0 60px !important; }
+    .ing-desc-row { display: flex; gap: 8px; flex: 1; min-width: 0; align-items: flex-start; }
     .rm-btn { padding: 6px 8px; background: none; border: 1px solid var(--brown-light); border-radius: 4px; cursor: pointer; color: var(--muted); flex-shrink: 0; font-size: 0.9rem; line-height: 1; }
     .rm-btn:hover { border-color: #c00; color: #c00; }
     .actions { display: flex; gap: 10px; margin-top: 8px; }
@@ -196,18 +197,27 @@
       .sidebar { display: none; }
       .mobile-bar { display: flex; }
 
+      /* Prevent iOS Safari autozoom on input focus (requires font-size ≥16px) */
+      input, select, textarea { font-size: 16px; }
+
       /* Tighter main padding */
       .main { padding: 16px; }
       .form-grid { max-width: 100%; }
 
-      /* Single-column field rows */
-      .row { grid-template-columns: 1fr; }
+      /* Two-column field rows (portions, id/title, etc.) */
+      .row { grid-template-columns: 1fr 1fr; }
+
+      /* Compact field inputs to fit two per row */
+      .field input, .field select, .field textarea { padding: 6px 8px; }
 
       /* Ingredient rows: wrap desc to second line, tighten amount/unit */
       .dynamic-row { flex-wrap: wrap; }
-      .dynamic-row .desc-input { flex: 1 1 100%; }
-      .amount-input { flex: 0 0 58px !important; }
-      .unit-input   { flex: 0 0 46px !important; }
+      /* Allow inputs to shrink below browser default min-width so all fit on one line */
+      .dynamic-row input { min-width: 0; padding: 6px 8px; }
+      /* desc+rm-btn wrapper drops to its own full-width second line */
+      .ing-desc-row { flex: 1 1 100%; }
+      .amount-input { flex: 0 0 54px !important; }
+      .unit-input   { flex: 0 0 64px !important; }
 
       /* Step header: title full-width, rest wraps to second line */
       .step-header { flex-wrap: wrap; }
@@ -228,7 +238,7 @@
       .step-ing-row { display: none !important; }
     }
   </style>
-  <script type="module" crossorigin src="/admin/assets/index-BbHXVvPy.js"></script>
+  <script type="module" crossorigin src="/admin/assets/index-kKWaVjG8.js"></script>
 </head>
 <body>
 <div class="mobile-bar">
