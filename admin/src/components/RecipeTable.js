@@ -7,6 +7,15 @@ function esc(s) {
 }
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
 
+function isDark() {
+  const t = document.documentElement.getAttribute('data-theme')
+  if (t === 'dark') return true
+  if (t === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
+
+function themeIcon() { return isDark() ? '☀' : '☾' }
+
 const PENCIL = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`
 
 export class RecipeTable {
@@ -31,77 +40,89 @@ export class RecipeTable {
 
   _mount() {
     this.container.innerHTML = `
-      <!-- Sticky header: full-width bar -->
-      <div class="sticky top-0 z-20 bg-kokebok-white border-b border-brown-light/25 shadow-[0_1px_6px_rgba(61,43,31,0.07)]">
-        <div class="max-w-5xl mx-auto">
+      <!-- Nav bar — matches frontend style -->
+      <nav class="sticky top-0 z-20 border-b border-brown-light"
+           style="background: color-mix(in srgb, var(--cream) 92%, transparent); backdrop-filter: blur(8px);">
+        <div class="max-w-[1100px] mx-auto flex items-center gap-4 px-6 h-14">
 
-          <!-- Breadcrumb + actions -->
-          <div class="flex items-center justify-between px-5 sm:px-8 py-4">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-semibold text-brown tracking-tight">Kokebok</span>
-              <span class="text-brown-light/50 select-none text-sm">/</span>
-              <span class="text-muted text-sm">Oppskrifter</span>
-              <span id="rt-count" class="text-muted/35 text-xs tabular-nums ml-0.5"></span>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <button id="rt-paste-btn"
-                class="hidden sm:inline-flex items-center gap-1.5 border border-brown-light/40 hover:border-brown-light text-muted hover:text-brown px-3 py-1.5 rounded-lg text-sm transition-colors">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                Importer
-              </button>
-              <button id="rt-new-btn"
-                class="flex items-center gap-1.5 bg-accent hover:bg-accent/90 active:scale-95 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-all">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                Ny oppskrift
-              </button>
-            </div>
+          <!-- Logo + breadcrumb -->
+          <div class="flex items-center gap-2 flex-shrink-0 min-w-0">
+            <img src="/assets/logo.png" alt="" class="w-7 h-7 rounded-md flex-shrink-0" />
+            <span class="text-brown flex items-center gap-1.5 text-sm min-w-0">
+              <span class="flex-shrink-0 tracking-tight" style="font-family: 'Playfair Display', serif; font-size: 1.05rem;">Kokebok</span>
+              <span class="text-brown-light/50 flex-shrink-0">/</span>
+              <span class="text-muted font-normal truncate">Oppskrifter</span>
+              <span id="rt-count" class="text-muted/35 text-xs tabular-nums flex-shrink-0 ml-0.5"></span>
+            </span>
           </div>
 
-          <!-- Filter row -->
-          <div class="px-5 sm:px-8 pb-4 flex flex-wrap gap-2 items-center">
-            <div class="relative flex-1 min-w-36 max-w-xs">
-              <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-              </svg>
-              <input id="rt-search" type="search" placeholder="Søk…" autocomplete="off"
-                class="w-full bg-white/60 border border-brown-light/35 rounded-lg pl-8 pr-3 py-1.5 text-sm text-brown placeholder:text-muted/40 outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all" />
-            </div>
+          <div class="flex-1"></div>
 
-            <select id="rt-cat-filter"
-              class="bg-white/60 border border-brown-light/35 rounded-lg px-3 py-1.5 text-sm text-brown outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all cursor-pointer">
-              <option value="">Alle kategorier</option>
-              ${CATEGORIES.map(c => `<option value="${c}">${cap(c)}</option>`).join('')}
-            </select>
-
-            <div id="rt-tag-filter-wrap" class="relative">
-              <button id="rt-tag-filter-btn"
-                class="flex items-center gap-1.5 bg-white/60 border border-brown-light/35 rounded-lg px-3 py-1.5 text-sm text-muted hover:text-brown hover:border-brown-light transition-colors">
-                Tagger
-                <span id="rt-tag-count" class="hidden bg-accent text-white rounded-full text-xs px-1.5 leading-5 min-w-[18px] text-center font-medium">0</span>
-                <svg class="w-3 h-3 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
-              </button>
-              <div id="rt-tag-dropdown"
-                class="hidden absolute top-full left-0 mt-1.5 bg-kokebok-white border border-brown-light/30 rounded-xl shadow-xl shadow-brown/[0.08] p-2 min-w-[180px] z-30 max-h-60 overflow-y-auto">
-                <div id="rt-tag-list" class="flex flex-col gap-0.5"></div>
-              </div>
-            </div>
-
-            <button id="rt-clear-filters" class="hidden items-center gap-1 text-accent/70 hover:text-accent text-sm transition-colors px-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-              Nullstill
+          <!-- Actions -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button id="rt-paste-btn"
+              class="hidden sm:inline-flex items-center gap-1.5 border border-brown-light hover:border-brown-light text-muted hover:text-brown px-3 py-1.5 rounded-full text-sm transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Importer
             </button>
+            <button id="rt-new-btn"
+              class="flex items-center gap-1.5 bg-accent hover:bg-accent/90 active:scale-95 text-white px-4 py-1.5 rounded-full text-sm font-medium transition-all">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+              <span class="hidden sm:inline">Ny oppskrift</span>
+              <span class="sm:hidden">Ny</span>
+            </button>
+            <button id="rt-theme-toggle"
+              class="flex-shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-full border border-brown-light text-muted hover:border-accent hover:text-accent transition-colors text-[0.9rem]"
+              aria-label="Bytt tema">${themeIcon()}</button>
           </div>
+        </div>
+      </nav>
+
+      <!-- Filter bar -->
+      <div class="border-b border-brown-light/20" style="background: color-mix(in srgb, var(--cream) 80%, transparent);">
+        <div class="max-w-[1100px] mx-auto px-6 py-2.5 flex flex-wrap gap-2 items-center">
+          <div class="relative flex-1 min-w-32 max-w-xs">
+            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+            </svg>
+            <input id="rt-search" type="search" placeholder="Søk…" autocomplete="off"
+              class="w-full bg-kokebok-white/60 border border-brown-light/40 rounded-lg pl-8 pr-3 py-1.5 text-sm text-brown placeholder:text-muted/40 outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all" />
+          </div>
+
+          <select id="rt-cat-filter"
+            class="bg-kokebok-white/60 border border-brown-light/40 rounded-lg px-3 py-1.5 text-sm text-brown outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all cursor-pointer">
+            <option value="">Alle kategorier</option>
+            ${CATEGORIES.map(c => `<option value="${c}">${cap(c)}</option>`).join('')}
+          </select>
+
+          <div id="rt-tag-filter-wrap" class="relative">
+            <button id="rt-tag-filter-btn"
+              class="flex items-center gap-1.5 bg-kokebok-white/60 border border-brown-light/40 rounded-lg px-3 py-1.5 text-sm text-muted hover:text-brown hover:border-brown-light transition-colors">
+              Tagger
+              <span id="rt-tag-count" class="hidden bg-accent text-white rounded-full text-xs px-1.5 leading-5 min-w-[18px] text-center font-medium">0</span>
+              <svg class="w-3 h-3 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="rt-tag-dropdown"
+              class="hidden absolute top-full left-0 mt-1.5 bg-kokebok-white border border-brown-light/30 rounded-xl shadow-lg p-2 min-w-[180px] z-30 max-h-60 overflow-y-auto">
+              <div id="rt-tag-list" class="flex flex-col gap-0.5"></div>
+            </div>
+          </div>
+
+          <button id="rt-clear-filters" class="hidden items-center gap-1 text-accent/70 hover:text-accent text-sm transition-colors px-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+            Nullstill
+          </button>
         </div>
       </div>
 
-      <!-- Page content: max-width container -->
-      <div id="rt-content" class="max-w-5xl mx-auto px-5 sm:px-8 py-6 pb-28">
+      <!-- Page content -->
+      <div id="rt-content" class="max-w-[1100px] mx-auto px-6 py-5 pb-28">
 
         <!-- Desktop table in card -->
         <div class="hidden sm:block rounded-2xl border border-brown-light/20 shadow-sm overflow-hidden" id="rt-table-card">
           <table class="w-full text-sm border-collapse bg-kokebok-white" id="rt-table">
             <thead>
-              <tr class="border-b border-brown-light/20 bg-[#f3ede3]">
+              <tr class="border-b border-brown-light/20" style="background: color-mix(in srgb, var(--cream) 60%, var(--warm-white));">
                 <th class="w-10 pl-5 pr-2 py-3">
                   <input type="checkbox" id="rt-select-all"
                     class="rounded border-brown-light/50 cursor-pointer accent-accent" />
@@ -133,19 +154,20 @@ export class RecipeTable {
         </div>
       </div>
 
-      <!-- Batch action bar: sticky bottom, dark -->
+      <!-- Batch action bar: always-dark floating panel -->
       <div id="rt-batch-bar"
-        class="hidden fixed bottom-0 left-0 right-0 bg-brown/95 backdrop-blur-sm border-t border-white/8 shadow-2xl z-30">
-        <div class="max-w-5xl mx-auto px-5 sm:px-8 py-3 flex flex-wrap items-center gap-3">
-          <span id="rt-batch-count" class="text-sm font-semibold min-w-[70px] shrink-0 text-cream"></span>
+        class="hidden fixed bottom-0 left-0 right-0 border-t border-white/[0.07] shadow-2xl z-30"
+        style="background: var(--batch-bar-bg); backdrop-filter: blur(10px);">
+        <div class="max-w-[1100px] mx-auto px-6 py-3 flex flex-wrap items-center gap-3">
+          <span id="rt-batch-count" class="text-sm font-semibold min-w-[70px] shrink-0 text-white/90"></span>
 
           <div class="flex items-center gap-2">
-            <span class="text-cream/40 text-xs hidden sm:block">Kategori</span>
+            <span class="text-white/35 text-xs hidden sm:block">Kategori</span>
             <select id="rt-batch-cat"
-              class="bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-cream outline-none focus:bg-white/15 cursor-pointer">
-              <option value="" class="bg-brown">— velg —</option>
-              <option value="__clear__" class="bg-brown">× Fjern</option>
-              ${CATEGORIES.map(c => `<option value="${c}" class="bg-brown">${cap(c)}</option>`).join('')}
+              class="bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-white/90 outline-none focus:bg-white/15 cursor-pointer">
+              <option value="" class="bg-[#1a120c]">— velg —</option>
+              <option value="__clear__" class="bg-[#1a120c]">× Fjern</option>
+              ${CATEGORIES.map(c => `<option value="${c}" class="bg-[#1a120c]">${cap(c)}</option>`).join('')}
             </select>
             <button id="rt-batch-cat-apply"
               class="bg-accent hover:bg-accent/90 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-all shadow-sm active:scale-95">
@@ -154,11 +176,11 @@ export class RecipeTable {
           </div>
 
           <div class="flex items-center gap-2">
-            <span class="text-cream/40 text-xs hidden sm:block">Legg til tag</span>
+            <span class="text-white/35 text-xs hidden sm:block">Legg til tag</span>
             <input id="rt-batch-add-tag" type="text" placeholder="tag1, tag2…"
-              class="bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-cream placeholder:text-white/25 outline-none focus:bg-white/15 w-32 sm:w-44 transition-colors" />
+              class="bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-white/90 placeholder:text-white/25 outline-none focus:bg-white/15 w-32 sm:w-44 transition-colors" />
             <button id="rt-batch-tag-apply"
-              class="bg-white/12 hover:bg-white/20 border border-white/15 text-cream px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+              class="bg-white/12 hover:bg-white/20 border border-white/15 text-white/80 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
               +
             </button>
           </div>
@@ -166,7 +188,7 @@ export class RecipeTable {
           <div id="rt-batch-remove-tags" class="flex items-center gap-1.5 flex-wrap"></div>
 
           <button id="rt-batch-close"
-            class="ml-auto text-cream/40 hover:text-cream hover:bg-white/10 transition-all p-1.5 rounded-lg" title="Avbryt valg">
+            class="ml-auto text-white/35 hover:text-white/90 hover:bg-white/10 transition-all p-1.5 rounded-lg" title="Avbryt valg (Esc)">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -190,6 +212,26 @@ export class RecipeTable {
 
     q('rt-new-btn').addEventListener('click', () => this.onNew())
     q('rt-paste-btn').addEventListener('click', () => this.onPaste())
+
+    // Theme toggle
+    q('rt-theme-toggle').addEventListener('click', () => {
+      const dark = isDark()
+      const next = dark ? 'light' : 'dark'
+      document.documentElement.setAttribute('data-theme', next)
+      localStorage.setItem('theme', next)
+      document.querySelectorAll('#rt-theme-toggle, #edit-theme-toggle').forEach(btn => {
+        btn.textContent = themeIcon()
+      })
+    })
+
+    // Esc clears selection
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && this.selected.size > 0) {
+        this.selected.clear()
+        this._renderRows()
+        this._renderBatchBar()
+      }
+    })
 
     q('rt-search').addEventListener('input', e => {
       this.filterText = e.target.value
@@ -452,9 +494,9 @@ export class RecipeTable {
 
       if (selectedTags.length) {
         removeTagsEl.innerHTML =
-          `<span class="text-cream/40 text-xs hidden sm:block shrink-0">Fjern:</span>` +
+          `<span class="text-white/35 text-xs hidden sm:block shrink-0">Fjern:</span>` +
           selectedTags.map(t =>
-            `<button class="rt-remove-tag-btn flex items-center gap-1 bg-white/10 hover:bg-red-900/40 border border-white/15 text-cream/70 hover:text-cream text-xs px-2 py-1 rounded-full transition-colors" data-tag="${esc(t)}">
+            `<button class="rt-remove-tag-btn flex items-center gap-1 bg-white/10 hover:bg-red-900/40 border border-white/15 text-white/70 hover:text-white text-xs px-2 py-1 rounded-full transition-colors" data-tag="${esc(t)}">
               ${esc(t)} <span class="opacity-40">×</span>
             </button>`
           ).join('')

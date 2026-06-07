@@ -48,11 +48,14 @@ function renderRecipePage(r) {
           </div>` : '';
 
   const ingredientItems = (r.ingredients || []).map(ing => {
-    const amt = ing.amount ?? 0;
+    const amt = ing.amount ?? null;
     const descHtml = ing.description ? ` <span class="ingredient-desc">(${esc(ing.description)})</span>` : '';
+    // Only add data-base/data-unit when amount is known — scaling JS skips elements without these attrs
+    const dataAttrs = amt != null ? ` data-base="${esc(String(amt))}" data-unit="${esc(ing.unit || '')}"` : '';
+    const amtDisplay = amt != null ? formatAmount(amt, ing.unit) : '—';
     return `
         <li class="ingredient">
-          <span class="ingredient-amount" data-base="${esc(String(amt))}" data-unit="${esc(ing.unit || '')}">${esc(formatAmount(amt, ing.unit))}</span>
+          <span class="ingredient-amount"${dataAttrs}>${esc(amtDisplay)}</span>
           <span class="ingredient-name">${esc(capitalize(ing.name))}${descHtml}</span>
         </li>`;
   }).join('');

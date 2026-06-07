@@ -665,4 +665,16 @@ recipeTable = new RecipeTable(document.getElementById('view-list'), {
 
 document.getElementById('back-btn').addEventListener('click', () => showList())
 
+// Edit view theme toggle (mirrors the one in RecipeTable)
+document.getElementById('edit-theme-toggle').addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  const next = isDark ? 'light' : 'dark'
+  document.documentElement.setAttribute('data-theme', next)
+  localStorage.setItem('theme', next)
+  document.querySelectorAll('#rt-theme-toggle, #edit-theme-toggle').forEach(btn => {
+    btn.textContent = next === 'dark' ? '☀' : '☾'
+  })
+})
+
 handleHash()

@@ -5,37 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kokebok Admin</title>
   <link rel="stylesheet" href="/src/main.css" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script>const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);</script>
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --cream: #f5f0e8; --brown: #3d2b1f; --brown-light: #c4a882;
-      --accent: #c8622a; --green: #4a6741; --text: #2c1f14; --muted: #7a6555;
-      --white: #faf8f4;
-    }
+    /* CSS vars come from main.css — aliased here for legacy component styles */
+    :root { --white: var(--warm-white); --muted: var(--text-muted); }
     body { background: var(--cream); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
 
     /* ── Edit view chrome ──────────────────────────────── */
     .edit-header {
       display: flex; align-items: center; gap: 10px;
-      padding: 12px 20px; background: var(--white);
-      border-bottom: 1px solid rgba(196,168,130,0.25);
-      box-shadow: 0 1px 4px rgba(61,43,31,0.06);
+      padding: 0 20px; height: 56px;
+      background: color-mix(in srgb, var(--cream) 92%, transparent);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--brown-light);
       position: sticky; top: 0; z-index: 50;
     }
     .edit-header-back {
       color: var(--muted); background: none; border: none;
-      cursor: pointer; font-size: 0.875rem; padding: 5px 10px; border-radius: 6px;
-      transition: color 0.15s; white-space: nowrap; flex-shrink: 0;
+      cursor: pointer; font-size: 0.875rem; padding: 5px 10px; border-radius: 8px;
+      transition: color 0.15s, background 0.15s; white-space: nowrap; flex-shrink: 0;
       display: flex; align-items: center; gap: 5px;
     }
-    .edit-header-back:hover { color: var(--brown); }
+    .edit-header-back:hover { color: var(--brown); background: color-mix(in srgb, var(--brown) 6%, transparent); }
     .edit-header-title {
       flex: 1; font-size: 1rem; font-weight: 500; color: var(--brown);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
     }
+    .theme-toggle-btn {
+      flex-shrink: 0; background: none; border: 1px solid var(--brown-light);
+      border-radius: 50%; width: 34px; height: 34px; cursor: pointer;
+      font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center;
+      justify-content: center; transition: border-color 0.2s, color 0.2s; line-height: 1;
+    }
+    .theme-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
     .main { padding: 32px; }
 
     /* ── Form ─────────────────────────────────────────── */
@@ -221,6 +227,7 @@
     <div class="edit-header">
       <button class="edit-header-back" id="back-btn">← Oppskrifter</button>
       <h1 class="edit-header-title" id="form-title">Ny oppskrift</h1>
+      <button class="theme-toggle-btn" id="edit-theme-toggle" aria-label="Bytt tema">☾</button>
     </div>
     <div class="main">
       <div id="form-area"></div>

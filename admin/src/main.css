@@ -1,12 +1,53 @@
 @import "tailwindcss";
 
+/* Base palette — light */
+:root {
+  --cream:       #f5f0e8;
+  --warm-white:  #faf8f4;
+  --brown:       #3d2b1f;
+  --brown-light: #c4a882;
+  --accent:      #c8622a;
+  --green:       #4a6741;
+  --text:        #2c1f14;
+  --text-muted:  #7a6555;
+  --batch-bar-bg: rgba(22, 15, 10, 0.96);
+}
+
+/* Dark — "Kald Stål" (same as frontend) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --cream:       #0d1117;
+    --warm-white:  #161c27;
+    --brown:       #e8edf5;
+    --brown-light: #253047;
+    --accent:      #5294d4;
+    --green:       #3a9e7c;
+    --text:        #b8c6d8;
+    --text-muted:  #566880;
+    --batch-bar-bg: rgba(8, 11, 18, 0.97);
+  }
+}
+
+[data-theme="dark"] {
+  --cream:       #0d1117;
+  --warm-white:  #161c27;
+  --brown:       #e8edf5;
+  --brown-light: #253047;
+  --accent:      #5294d4;
+  --green:       #3a9e7c;
+  --text:        #b8c6d8;
+  --text-muted:  #566880;
+  --batch-bar-bg: rgba(8, 11, 18, 0.97);
+}
+
+/* Tailwind theme — reference CSS vars so utilities adapt to dark mode */
 @theme {
-  --color-cream: #f5f0e8;
-  --color-brown: #3d2b1f;
-  --color-brown-light: #c4a882;
-  --color-accent: #c8622a;
-  --color-kokebok-green: #4a6741;
-  --color-text: #2c1f14;
-  --color-muted: #7a6555;
-  --color-kokebok-white: #faf8f4;
+  --color-cream:        var(--cream);
+  --color-brown:        var(--brown);
+  --color-brown-light:  var(--brown-light);
+  --color-accent:       var(--accent);
+  --color-kokebok-green: var(--green);
+  --color-text:         var(--text);
+  --color-muted:        var(--text-muted);
+  --color-kokebok-white: var(--warm-white);
 }
