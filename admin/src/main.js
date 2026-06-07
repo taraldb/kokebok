@@ -1,23 +1,25 @@
+import './main.css'
 import { StepEditor } from './editor/StepEditor.js'
 import { wireDropTarget } from './editor/dragHandlers.js'
 import { FactorPopover } from './components/FactorPopover.js'
 import { IngredientSidebar } from './components/IngredientSidebar.js'
 import { RawModeToggle } from './components/RawModeToggle.js'
 import { PasteRawModal } from './components/PasteRawModal.js'
+import { RecipeTable } from './components/RecipeTable.js'
 
 const CATEGORIES = ['frokost','middag','dessert','tilbehør','snacks']
 
 let recipes = []
 let editingId = null
-let stepEditors = []  // { editor: StepEditor, getTitle, getTimer }
+let stepEditors = []
 let ingredientSidebar = null
 let lastFocusedStepEditor = null
 let activeIngRow = null
 let ingRowHideTimer = null
 let currentSums = {}
 let currentIngredients = []
-let filterText = ''
-let filterCategory = ''
+let recipeTable = null
+
 const factorPopover = new FactorPopover()
 
 const pasteRawModal = new PasteRawModal({
@@ -29,9 +31,9 @@ const pasteRawModal = new PasteRawModal({
     })
     const data = await res.json()
     if (res.ok) {
-      editingId = data.id || recipe.id
+      const newId = data.id || recipe.id
       await loadList()
-      await loadRecipe(editingId)
+      showEdit(newId)
     } else {
       alert(data.error || 'Feil ved lagring.')
     }
@@ -59,60 +61,43 @@ function uniqueSlug(name, taken) {
   return `${base}-${n}`
 }
 
+// ── View state machine ────────────────────────────────────────────────────────
+
+function showList() {
+  document.getElementById('view-list').hidden = false
+  document.getElementById('view-edit').hidden = true
+  loadList()
+  if (location.hash !== '#/') history.replaceState(null, '', '#/')
+}
+
+function showEdit(id) {
+  document.getElementById('view-list').hidden = true
+  document.getElementById('view-edit').hidden = false
+  editingId = id || null
+  if (id) {
+    if (location.hash !== `#/edit/${id}`) history.replaceState(null, '', `#/edit/${id}`)
+    loadRecipe(id)
+  } else {
+    if (location.hash !== '#/new') history.replaceState(null, '', '#/new')
+    newRecipeForm()
+  }
+}
+
+window.addEventListener('hashchange', handleHash)
+
+function handleHash() {
+  const h = location.hash
+  if (h.startsWith('#/edit/')) showEdit(h.slice(7))
+  else if (h === '#/new') showEdit(null)
+  else showList()
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 async function loadList() {
   const res = await fetch('/api/recipes')
   recipes = await res.json()
-  renderCategoryChips()
-  renderList()
-}
-
-function renderCategoryChips() {
-  const categories = [...new Set(recipes.map(r => r.category).filter(Boolean))].sort()
-  const chips = document.getElementById('cat-chips')
-  if (!chips) return
-  chips.innerHTML = categories.map(cat => `
-    <button class="cat-chip ${filterCategory === cat ? 'active' : ''}" data-cat="${esc(cat)}">${cap(cat)}</button>
-  `).join('')
-  chips.querySelectorAll('.cat-chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      filterCategory = filterCategory === btn.dataset.cat ? '' : btn.dataset.cat
-      renderCategoryChips()
-      renderList()
-    })
-  })
-}
-
-function renderList() {
-  const q = filterText.toLowerCase()
-  const filtered = recipes.filter(r => {
-    if (filterCategory && r.category !== filterCategory) return false
-    if (q && !r.title.toLowerCase().includes(q)) return false
-    return true
-  })
-
-  const ul = document.getElementById('recipe-list')
-  ul.innerHTML = filtered.map(r => `
-    <li class="recipe-item ${editingId === r.id ? 'active' : ''}" data-id="${esc(r.id)}">${esc(r.title)}</li>
-  `).join('')
-  ul.querySelectorAll('.recipe-item').forEach(li => {
-    li.addEventListener('click', () => loadRecipe(li.dataset.id))
-  })
-
-  const countEl = document.getElementById('recipe-count')
-  if (countEl) {
-    countEl.textContent = filtered.length === recipes.length
-      ? `${recipes.length} oppskrifter`
-      : `${filtered.length} av ${recipes.length}`
-  }
-
-  // Mobile select (always show all)
-  const sel = document.getElementById('mobile-recipe-select')
-  if (sel) {
-    sel.innerHTML = '<option value="">— Velg oppskrift —</option>' +
-      recipes.map(r => `<option value="${esc(r.id)}" ${editingId === r.id ? 'selected' : ''}>${esc(r.title)}</option>`).join('')
-  }
+  if (recipeTable) recipeTable.update(recipes)
 }
 
 async function loadRecipe(id) {
@@ -120,10 +105,15 @@ async function loadRecipe(id) {
   const r = await res.json()
   editingId = id
   renderForm(r)
-  await loadList()
 }
 
 // ── Form ──────────────────────────────────────────────────────────────────────
+
+function newRecipeForm() {
+  editingId = null
+  destroyEditors()
+  renderForm({})
+}
 
 function renderForm(r) {
   destroyEditors()
@@ -205,7 +195,6 @@ function renderForm(r) {
   currentIngredients = ingredients
   currentSums = {}
 
-  // Render ingredient sidebar inside the steps layout column
   const sidebarContainer = document.getElementById('ing-sidebar-col')
   ingredientSidebar = new IngredientSidebar(sidebarContainer, ingredients, {
     onInsert: ingId => {
@@ -216,14 +205,10 @@ function renderForm(r) {
     },
   })
 
-  // Render TipTap step editors
   const stepRowsEl = document.getElementById('step-rows')
-  ;(r.steps || []).forEach((step, i) => {
-    appendStepEditor(stepRowsEl, step, ingredients)
-  })
+  ;(r.steps || []).forEach(step => appendStepEditor(stepRowsEl, step, ingredients))
   recomputeSums()
 
-  // Wire buttons
   document.getElementById('add-meta-btn').addEventListener('click', () =>
     document.getElementById('meta-rows').insertAdjacentHTML('beforeend', metaRowHtml()))
   document.getElementById('add-ing-btn').addEventListener('click', () =>
@@ -241,21 +226,9 @@ function renderForm(r) {
   document.getElementById('add-tip-btn').addEventListener('click', () =>
     document.getElementById('tip-rows').insertAdjacentHTML('beforeend', tipRowHtml()))
   document.getElementById('save-btn').addEventListener('click', save)
-  document.getElementById('cancel-btn').addEventListener('click', () => {
-    if (r.id) {
-      loadRecipe(r.id)
-    } else {
-      destroyEditors()
-      document.getElementById('form-title').textContent = 'Velg en oppskrift eller lag ny'
-      document.getElementById('form-area').innerHTML = ''
-      document.querySelectorAll('.recipe-item').forEach(el => el.classList.remove('active'))
-      const sel = document.getElementById('mobile-recipe-select')
-      if (sel) sel.value = ''
-    }
-  })
+  document.getElementById('cancel-btn').addEventListener('click', () => showList())
   document.getElementById('del-btn')?.addEventListener('click', () => del(r.id))
 
-  // Raw YAML toggle
   const rawContainer = document.createElement('div')
   rawContainer.id = 'raw-toggle-container'
   document.getElementById('form-area').appendChild(rawContainer)
@@ -336,10 +309,9 @@ function appendStepEditor(container, step, ingredients) {
       activeIngRow = ingRow
       ingRow.classList.add('active')
     },
-    onBlur:  () => scheduleIngRowHide(),
+    onBlur: () => scheduleIngRowHide(),
   })
 
-  // Toolbar buttons
   wrapper.querySelector('[data-cmd="bold"]').addEventListener('click', () =>
     editor.editor.chain().focus().toggleBold().run())
   wrapper.querySelector('[data-cmd="italic"]').addEventListener('click', () =>
@@ -347,28 +319,21 @@ function appendStepEditor(container, step, ingredients) {
   wrapper.querySelector('[data-cmd="underline"]').addEventListener('click', () =>
     editor.editor.chain().focus().toggleUnderline().run())
 
-  // Wire drop target for ingredient sidebar drag
-  wireDropTarget(mountEl, editor, {
-    onInsert: () => recomputeSums(),
-  })
+  wireDropTarget(mountEl, editor, { onInsert: () => recomputeSums() })
 
-  // Click on ing-chip → factor popover
-  // Use mousedown capture on document so nothing can swallow the event
   const chipMousedown = e => {
     const chip = e.target.closest?.('.ing-chip')
     if (!chip || !editor.editor.view.dom.contains(chip)) return
     e.preventDefault()
-    e.stopPropagation()  // prevent any other handler from interfering
+    e.stopPropagation()
     const pm = editor.editor.view
-    // Find document position by scanning the doc for the chip's DOM node
     let nodePos = null
     pm.state.doc.descendants((node, pos) => {
       if (nodePos !== null) return false
       if (node.type.name === 'ingredientRef') {
         const domAtPos = pm.nodeDOM(pos)
         if (domAtPos === chip || (domAtPos && domAtPos.contains && domAtPos.contains(chip))) {
-          nodePos = pos
-          return false
+          nodePos = pos; return false
         }
       }
     })
@@ -378,7 +343,6 @@ function appendStepEditor(container, step, ingredients) {
     const { ingredientId, factor } = node.attrs
     const ing = ingredients.find(i => i.id === ingredientId)
     const rect = chip.getBoundingClientRect()
-    // position: fixed uses viewport coords — no scroll offset needed
     factorPopover.show(ing || null, factor, newFactor => {
       editor.editor.chain().focus()
         .command(({ tr, state }) => {
@@ -393,15 +357,11 @@ function appendStepEditor(container, step, ingredients) {
   document.addEventListener('mousedown', chipMousedown, true)
   wrapper._chipMousedown = chipMousedown
 
-  const stepEntry = {
-    wrapperId,
-    wrapper,
-    editor,
-    ingRow,
+  stepEditors.push({
+    wrapperId, wrapper, editor, ingRow,
     getTitle: () => wrapper.querySelector('[data-step-title]').value.trim(),
     getTimer: () => parseInt(wrapper.querySelector('[data-step-timer]').value) || 0,
-  }
-  stepEditors.push(stepEntry)
+  })
 }
 
 function recomputeSums() {
@@ -453,8 +413,6 @@ function reorderStep(wrapperId, direction) {
 
 function populateIngRow(row, ingredients) {
   const sums = currentSums
-
-  // Sort: used ingredients first, unused last
   const sorted = [...ingredients].sort((a, b) => {
     const aEmpty = (sums[a.id] ?? 0) === 0
     const bEmpty = (sums[b.id] ?? 0) === 0
@@ -466,7 +424,6 @@ function populateIngRow(row, ingredients) {
     const sum = sums[ing.id] ?? 0
     const isDone = Math.abs(sum - 1.0) <= 0.02
     const remaining = 1 - sum
-
     const colorClass = sum === 0 ? 'pill-grey' : (isDone ? 'pill-green' : 'pill-orange')
 
     let remText = ''
@@ -476,7 +433,6 @@ function populateIngRow(row, ingredients) {
     }
 
     const insertFactor = (!isDone && remaining > 0.001) ? remaining : 1.0
-
     const btn = document.createElement('button')
     btn.className = `step-ing-pill ${colorClass}`
     btn.innerHTML = `<span class="step-ing-pill-name">${esc(ing.name)}</span>${remText ? `<span class="step-ing-pill-rem">${esc(remText)}</span>` : ''}`
@@ -553,7 +509,6 @@ function ensureSpacesAroundChips(doc) {
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
       if (node.type !== 'ingredientRef') { result.push(node); continue }
-      // Space before chip
       if (result.length > 0) {
         const prev = result[result.length - 1]
         if (prev.type === 'text' && !prev.text.endsWith(' ')) {
@@ -563,7 +518,6 @@ function ensureSpacesAroundChips(doc) {
         }
       }
       result.push(node)
-      // Space after chip
       if (i + 1 < nodes.length) {
         const next = nodes[i + 1]
         if (next.type === 'text' && !next.text.startsWith(' ')) {
@@ -600,7 +554,6 @@ async function save() {
     description: el.closest('.dynamic-row').querySelector('[data-ing-desc]').value.trim() || null,
   })).filter(i => i.name)
 
-  // Remap newly-generated (non-slug) IDs to name-based slugs
   const savedIngIds = new Set((recipes.find(r => r.id === editingId)?.ingredients || []).map(i => i.id))
   const takenSlugs = new Set(rawIngredients.filter(i => savedIngIds.has(i.id)).map(i => i.id))
   const idRemap = new Map()
@@ -668,11 +621,19 @@ async function save() {
 
   if (res.ok) {
     editingId = id
+    if (isNew) history.replaceState(null, '', `#/edit/${id}`)
     stepEditors.forEach((e, i) => { e.editor.setIngredients(ingredients); e.editor.setDoc(fixedDocs[i]) })
     if (ingredientSidebar) { ingredientSidebar.update(ingredients); recomputeSums() }
     updateAllIngRows(ingredients)
+    document.getElementById('form-title').textContent = title
     showStatus('Oppskrift lagret!', true)
-    await loadList()
+    // Update local list cache (timestamps will refresh on next loadList)
+    const idx = recipes.findIndex(r => r.id === id)
+    if (idx !== -1) {
+      recipes[idx] = { ...recipes[idx], title, category: recipe.category, tags: recipe.tags, updated_at: Date.now() }
+    } else {
+      recipes.push({ id, title, category: recipe.category, tags: recipe.tags, created_at: Date.now(), updated_at: Date.now() })
+    }
   } else {
     showStatus(data.error ? JSON.stringify(data.error) : 'Feil ved lagring.', false)
   }
@@ -684,9 +645,7 @@ async function del(id) {
   if (res.ok) {
     editingId = null
     destroyEditors()
-    document.getElementById('form-title').textContent = 'Velg en oppskrift eller lag ny'
-    document.getElementById('form-area').innerHTML = ''
-    await loadList()
+    showList()
   }
 }
 
@@ -698,35 +657,12 @@ function showStatus(msg, ok) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-function newRecipe() {
-  editingId = null
-  destroyEditors()
-  renderForm({})
-  document.querySelectorAll('.recipe-item').forEach(el => el.classList.remove('active'))
-  const sel = document.getElementById('mobile-recipe-select')
-  if (sel) sel.value = ''
-}
-
-document.getElementById('new-btn').addEventListener('click', newRecipe)
-document.getElementById('paste-btn').addEventListener('click', () => pasteRawModal.show())
-
-document.getElementById('sidebar-search')?.addEventListener('input', e => {
-  filterText = e.target.value
-  renderList()
+recipeTable = new RecipeTable(document.getElementById('view-list'), {
+  onEdit: id => showEdit(id),
+  onNew:  () => showEdit(null),
+  onPaste: () => pasteRawModal.show(),
 })
 
-// Mobile bar
-document.getElementById('mobile-recipe-select')?.addEventListener('change', e => {
-  if (e.target.value) loadRecipe(e.target.value)
-})
-document.getElementById('mobile-new-btn')?.addEventListener('click', newRecipe)
-document.getElementById('mobile-paste-btn')?.addEventListener('click', () => pasteRawModal.show())
+document.getElementById('back-btn').addEventListener('click', () => showList())
 
-
-const urlId = new URLSearchParams(location.search).get('id')
-if (urlId) {
-  history.replaceState(null, '', location.pathname)
-  loadList().then(() => loadRecipe(urlId))
-} else {
-  loadList()
-}
+handleHash()

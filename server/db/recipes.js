@@ -12,13 +12,49 @@ function parseRecipeRow(row) {
 }
 
 /**
- * @returns {{id:string,title:string,description:string,category:string,tags:string[]}[]}
+ * @returns {{id:string,title:string,description:string,category:string,tags:string[],created_at:number,updated_at:number}[]}
  */
 function listRecipes() {
   const db = getDb();
   return db.prepare(
-    `SELECT id, title, description, category, tags FROM recipes ORDER BY title COLLATE NOCASE`
+    `SELECT id, title, description, category, tags, created_at, updated_at FROM recipes ORDER BY title COLLATE NOCASE`
   ).all().map(r => ({ ...r, tags: JSON.parse(r.tags) }));
+}
+
+/**
+ * Batch update category and/or tags for multiple recipes.
+ * @param {string[]} ids
+ * @param {{ category?: string|null, addTags?: string[], removeTags?: string[] }} updates
+ * @returns {number} count of updated recipes
+ */
+function batchUpdate(ids, updates) {
+  if (!ids.length) return 0;
+  const db = getDb();
+  const now = Date.now();
+  const { category, addTags, removeTags } = updates;
+
+  db.transaction(() => {
+    if (category !== undefined) {
+      const placeholders = ids.map(() => '?').join(',');
+      db.prepare(`UPDATE recipes SET category = ?, updated_at = ? WHERE id IN (${placeholders})`)
+        .run(category, now, ...ids);
+    }
+
+    if ((addTags && addTags.length) || (removeTags && removeTags.length)) {
+      const getStmt = db.prepare(`SELECT id, tags FROM recipes WHERE id = ?`);
+      const updateStmt = db.prepare(`UPDATE recipes SET tags = ?, updated_at = ? WHERE id = ?`);
+      for (const id of ids) {
+        const row = getStmt.get(id);
+        if (!row) continue;
+        let tags = JSON.parse(row.tags || '[]');
+        if (addTags && addTags.length) tags = [...new Set([...tags, ...addTags])];
+        if (removeTags && removeTags.length) tags = tags.filter(t => !removeTags.includes(t));
+        updateStmt.run(JSON.stringify(tags), now, id);
+      }
+    }
+  })();
+
+  return ids.length;
 }
 
 /**
@@ -132,4 +168,4 @@ function setTemplateHash(hash) {
   ).run(hash);
 }
 
-module.exports = { listRecipes, getRecipe, upsertRecipe, deleteRecipe, getTemplateHash, setTemplateHash };
+module.exports = { listRecipes, getRecipe, upsertRecipe, deleteRecipe, batchUpdate, getTemplateHash, setTemplateHash };

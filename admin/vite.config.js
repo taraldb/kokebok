@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite'
 import path from 'path'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ command }) => ({
+  plugins: [tailwindcss()],
   root: path.resolve(__dirname),
   base: command === 'serve' ? '/' : '/admin/',
   build: {

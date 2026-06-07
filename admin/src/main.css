@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #f5f0e8;
+  --color-brown: #3d2b1f;
+  --color-brown-light: #c4a882;
+  --color-accent: #c8622a;
+  --color-kokebok-green: #4a6741;
+  --color-text: #2c1f14;
+  --color-muted: #7a6555;
+  --color-kokebok-white: #faf8f4;
+}
