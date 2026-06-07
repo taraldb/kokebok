@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kokebok Admin</title>
   <link rel="stylesheet" href="/src/main.css" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
   <style>
@@ -14,22 +15,25 @@
       --accent: #c8622a; --green: #4a6741; --text: #2c1f14; --muted: #7a6555;
       --white: #faf8f4;
     }
-    body { background: var(--cream); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+    body { background: var(--cream); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
 
     /* ── Edit view chrome ──────────────────────────────── */
     .edit-header {
       display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; background: var(--brown); color: var(--cream);
+      padding: 12px 20px; background: var(--white);
+      border-bottom: 1px solid rgba(196,168,130,0.25);
+      box-shadow: 0 1px 4px rgba(61,43,31,0.06);
       position: sticky; top: 0; z-index: 50;
     }
     .edit-header-back {
-      color: rgba(255,255,255,0.55); background: none; border: none;
-      cursor: pointer; font-size: 0.85rem; padding: 5px 10px; border-radius: 6px;
+      color: var(--muted); background: none; border: none;
+      cursor: pointer; font-size: 0.875rem; padding: 5px 10px; border-radius: 6px;
       transition: color 0.15s; white-space: nowrap; flex-shrink: 0;
+      display: flex; align-items: center; gap: 5px;
     }
-    .edit-header-back:hover { color: var(--cream); }
+    .edit-header-back:hover { color: var(--brown); }
     .edit-header-title {
-      flex: 1; font-size: 1rem; font-weight: 500; color: white;
+      flex: 1; font-size: 1rem; font-weight: 500; color: var(--brown);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
     }
     .main { padding: 32px; }
