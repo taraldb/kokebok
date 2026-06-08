@@ -45,6 +45,7 @@ const pasteRawModal = new PasteRawModal({
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
 function genId() { return Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10) }
+function parseNumeric(v) { const n = parseFloat(String(v ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? '' : n }
 
 function slugify(name) {
   return name.toLowerCase()
@@ -104,7 +105,33 @@ async function loadRecipe(id) {
   const res = await fetch(`/api/recipes/${id}`)
   const r = await res.json()
   editingId = id
+  migrateRecipe(r)
   renderForm(r)
+}
+
+function migrateRecipe(r) {
+  // Migrate "Aktiv tid" meta row → dedicated active_time field
+  if (r.active_time == null) {
+    const idx = (r.meta ?? []).findIndex(m => m.label?.toLowerCase() === 'aktiv tid')
+    if (idx !== -1) {
+      r.active_time = parseNumeric(r.meta[idx].value) || null
+      r.meta.splice(idx, 1)
+    }
+  }
+  // Split embedded unit from value for old-format rows (e.g. "22–24 min" → value "22–24", unit "min")
+  ;(r.meta ?? []).forEach(m => {
+    if (m.unit !== undefined) return
+    const split = splitValueUnit(m.value)
+    m.value = split.value
+    m.unit  = split.unit
+  })
+}
+
+function splitValueUnit(str) {
+  // Splits "~30 min", "8–12 timer", "22–24 min" into { value, unit }
+  const m = String(str ?? '').trim().match(/^([~\d–\-\.]+)\s*(.*)$/)
+  if (!m) return { value: String(str ?? ''), unit: '' }
+  return { value: m[1].trim(), unit: m[2].trim() }
 }
 
 // ── Form ──────────────────────────────────────────────────────────────────────
@@ -117,77 +144,150 @@ function newRecipeForm() {
 
 function renderForm(r) {
   destroyEditors()
-  document.getElementById('form-title').textContent = r.id ? r.title : 'Ny oppskrift'
+  const titleText = r.id ? r.title : 'Ny oppskrift'
+  document.getElementById('form-title').textContent = titleText
 
   const catOptions = CATEGORIES.map(c =>
     `<option value="${c}" ${r.category === c ? 'selected' : ''}>${cap(c)}</option>`
   ).join('')
 
   document.getElementById('form-area').innerHTML = `
-    <div class="form-grid">
-      <div class="row">
-        <div class="field"><label>ID (url-slug)</label>
-          <input id="f-id" value="${esc(r.id||'')}" placeholder="f.eks. sjokoladekake" ${r.id ? 'readonly' : ''} /></div>
-        <div class="field"><label>Tittel</label>
-          <input id="f-title" value="${esc(r.title||'')}" placeholder="Oppskriftens navn" /></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Etikett</label>
-          <input id="f-label" value="${esc(r.label||'')}" placeholder="f.eks. Surdeig · Kaldheving" /></div>
-        <div class="field"><label>Kategori</label>
-          <select id="f-category"><option value="">— velg —</option>${catOptions}</select></div>
-      </div>
-      <div class="field"><label>Beskrivelse</label>
-        <textarea id="f-desc">${esc(r.description||'')}</textarea></div>
-      <div class="field"><label>Tags (kommaseparert)</label>
-        <input id="f-tags" value="${esc((r.tags||[]).join(', '))}" /></div>
+    <div class="edit-grid" id="edit-grid">
+      <!-- Form column -->
+      <div class="form-col" id="form-col">
 
-      <div class="section-head"><span>Meta-info</span>
-        <button class="add-row-btn" id="add-meta-btn">+ Legg til</button></div>
-      <div id="meta-rows">
-        ${(r.meta||[]).map(m => metaRowHtml(m.label, m.value)).join('')}
-      </div>
-
-      <div class="section-head"><span>Porsjoner</span></div>
-      <div class="row">
-        <div class="field"><label>Base-antall</label>
-          <input id="f-srv-base" type="number" value="${r.servings_base??''}" /></div>
-        <div class="field"><label>Enhet</label>
-          <input id="f-srv-unit" value="${esc(r.servings_unit||'')}" /></div>
-        <div class="field"><label>Steg (±)</label>
-          <input id="f-srv-step" type="number" value="${r.servings_step??1}" /></div>
-        <div class="field"><label>Minimum</label>
-          <input id="f-srv-min" type="number" value="${r.servings_min??1}" /></div>
-      </div>
-
-      <div class="section-head"><span>Ingredienser</span>
-        <button class="add-row-btn" id="add-ing-btn">+ Legg til</button></div>
-      <div id="ingredient-rows">
-        ${(r.ingredients||[]).map(i => ingredientRowHtml(i.id, i.amount, i.unit, i.name, i.description)).join('')}
-      </div>
-
-      <div class="steps-layout">
-        <div class="steps-col">
-          <div class="section-head"><span>Fremgangsmåte</span>
-            <button class="add-row-btn" id="add-step-btn">+ Legg til</button></div>
-          <div id="step-rows"></div>
+        <!-- Grunninfo -->
+        <div class="fgroup">
+          <div class="fgroup-title">Grunninfo</div>
+          <div class="frow">
+            <div class="field">
+              <label>Tittel</label>
+              <input id="f-title" value="${esc(r.title||'')}" placeholder="Oppskriftens navn" />
+            </div>
+            <div class="field">
+              <label>ID (url-slug)</label>
+              <input id="f-id" value="${esc(r.id||'')}" placeholder="f.eks. sjokoladekake" ${r.id ? 'readonly' : ''} />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="field">
+              <label>Etikett</label>
+              <input id="f-label" value="${esc(r.label||'')}" placeholder="f.eks. Surdeig · Kaldheving" />
+            </div>
+            <div class="field">
+              <label>Kategori</label>
+              <div class="select-wrap">
+                <select id="f-category"><option value="">— velg —</option>${catOptions}</select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Beskrivelse</label>
+            <textarea id="f-desc">${esc(r.description||'')}</textarea>
+          </div>
+          <div class="field">
+            <label>Tags (kommaseparert)</label>
+            <input id="f-tags" value="${esc((r.tags||[]).join(', '))}" placeholder="vegetar, rask, suppe…" />
+          </div>
         </div>
-        <div id="ing-sidebar-col"></div>
+
+        <!-- Tid & egenskaper -->
+        <div class="fgroup">
+          <div class="fgroup-title">
+            Tid &amp; egenskaper
+            <span class="hint">Aktiv tid er påkrevd</span>
+          </div>
+          <div class="frow-3">
+            <div class="field">
+              <label>Aktiv tid (min)<span class="req">påkrevd</span></label>
+              <input id="f-active-time" type="text" inputmode="numeric" value="${r.active_time != null ? r.active_time : ''}" placeholder="30 eller ~30" />
+            </div>
+            <div class="field">
+              <label>Porsjoner</label>
+              <input id="f-srv-base" type="number" value="${r.servings_base??''}" placeholder="4" />
+            </div>
+            <div class="field">
+              <label>Enhet</label>
+              <input id="f-srv-unit" value="${esc(r.servings_unit||'')}" placeholder="porsjoner" />
+            </div>
+          </div>
+          <div class="dyn-list" id="meta-rows">
+            ${(r.meta||[]).map(m => metaRowHtml(m.label, m.value, m.unit ?? 'min')).join('')}
+          </div>
+          <button class="add-row" id="add-meta-btn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            Legg til egenskap (f.eks. steketid)
+          </button>
+        </div>
+
+        <!-- Ingredienser -->
+        <div class="fgroup">
+          <div class="fgroup-title">Ingredienser</div>
+          <div class="dyn-list" id="ingredient-rows">
+            ${(r.ingredients||[]).map(i => ingredientRowHtml(i.id, i.amount, i.unit, i.name, i.description)).join('')}
+          </div>
+          <button class="add-row" id="add-ing-btn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            Legg til ingrediens
+          </button>
+        </div>
+
+        <!-- Fremgangsmåte -->
+        <div class="fgroup">
+          <div class="fgroup-title">Fremgangsmåte</div>
+          <div class="steps-layout" id="steps-layout">
+            <div class="steps-col" id="step-rows"></div>
+            <div class="ing-sidebar-col" id="ing-sidebar-col"></div>
+          </div>
+          <button class="add-row" id="add-step-btn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            Legg til steg
+          </button>
+        </div>
+
+        <!-- Tips -->
+        <div class="fgroup">
+          <div class="fgroup-title">Tips</div>
+          <div class="dyn-list" id="tip-rows">
+            ${(r.tips||[]).map(t => tipRowHtml(t)).join('')}
+          </div>
+          <button class="add-row" id="add-tip-btn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            Legg til tips
+          </button>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:24px;">
+          <button class="save-btn" id="save-btn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round"/></svg>
+            Lagre
+          </button>
+          <button class="ghost-btn" id="cancel-btn">Avbryt</button>
+          ${r.id ? `<button class="ghost-btn" style="color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,transparent)" id="del-btn">Slett</button>` : ''}
+          ${r.id ? `<a class="ghost-btn" href="/r/${esc(r.id)}" target="_blank">↗ Se på siden</a>` : ''}
+        </div>
+
+        <div id="status-area"></div>
       </div>
 
-      <div class="section-head"><span>Tips</span>
-        <button class="add-row-btn" id="add-tip-btn">+ Legg til</button></div>
-      <div id="tip-rows">
-        ${(r.tips||[]).map(t => tipRowHtml(t)).join('')}
+      <!-- Preview column -->
+      <div class="preview-col" id="preview-col">
+        <div class="preview-frame">
+          <div class="preview-chrome">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <span class="url" id="preview-url">kokebok.bergee.net/r/…</span>
+            <span class="preview-label">Forhåndsvisning</span>
+            <button class="icon-btn preview-toggle" id="preview-toggle" title="Skjul forhåndsvisning">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="preview-col-label">Forhåndsvisning</div>
+          <div class="preview-body" id="preview-body">
+            <div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:40px 0;">Fyll inn skjema for å se forhåndsvisning</div>
+          </div>
+        </div>
       </div>
-
-      <div class="actions">
-        <button class="save-btn" id="save-btn">Lagre oppskrift</button>
-        <button class="cancel-btn" id="cancel-btn">Avbryt</button>
-        ${r.id ? `<button class="del-btn" id="del-btn">Slett</button>` : ''}
-        ${r.id ? `<a class="view-site-btn" href="/r/${esc(r.id)}" target="_blank">↗ Se på siden</a>` : ''}
-      </div>
-      <div class="status" id="status"></div>
     </div>
   `
 
@@ -231,15 +331,28 @@ function renderForm(r) {
 
   const rawContainer = document.createElement('div')
   rawContainer.id = 'raw-toggle-container'
-  document.getElementById('form-area').appendChild(rawContainer)
+  rawContainer.style.padding = '0 28px 32px'
+  document.getElementById('form-col').appendChild(rawContainer)
   new RawModeToggle(rawContainer, r.id || null, {
     onSaved: () => r.id && loadRecipe(r.id),
+  })
+
+  // Wire preview updates
+  document.getElementById('form-col').addEventListener('input', () => updatePreview())
+  updatePreview()
+
+  // Preview collapse toggle (persisted)
+  const grid = document.getElementById('edit-grid')
+  if (localStorage.getItem('previewCollapsed') === '1') grid.classList.add('preview-collapsed')
+  document.getElementById('preview-toggle').addEventListener('click', () => {
+    const collapsed = grid.classList.toggle('preview-collapsed')
+    localStorage.setItem('previewCollapsed', collapsed ? '1' : '0')
   })
 }
 
 function getCurrentIngredients() {
   return [...document.querySelectorAll('#ingredient-rows [data-ing-id-val]')].map(el => {
-    const row = el.closest('.dynamic-row')
+    const row = el.closest('.ing-row')
     return {
       id: el.value,
       amount: parseFloat(row.querySelector('[data-ing-amount]').value) || null,
@@ -252,31 +365,40 @@ function getCurrentIngredients() {
 function appendStepEditor(container, step, ingredients) {
   const wrapperId = `step-wrapper-${genId()}`
   const editorId = `step-editor-${genId()}`
+  const stepNum = container.children.length + 1
 
   const wrapper = document.createElement('div')
-  wrapper.className = 'step-wrapper'
+  wrapper.className = 'step-card'
   wrapper.setAttribute('data-step-wrapper', '')
   wrapper.dataset.wrapperId = wrapperId
   wrapper.innerHTML = `
-    <div class="step-header">
+    <div class="step-card-head">
+      <span class="step-num">${stepNum}</span>
       <input class="step-title-input" placeholder="Tittel på steg"
              value="${esc(step?.title || '')}" data-step-title />
-      <input class="step-timer-input" type="number" placeholder="Timer (sek)"
-             value="${step?.timer_seconds || ''}" data-step-timer />
-      <div class="step-reorder-btns">
-        <button class="step-reorder-btn" data-dir="top"    title="Til toppen">⇈</button>
-        <button class="step-reorder-btn" data-dir="up"     title="Opp">↑</button>
-        <button class="step-reorder-btn" data-dir="down"   title="Ned">↓</button>
-        <button class="step-reorder-btn" data-dir="bottom" title="Til bunnen">⇊</button>
+      <div class="step-reorder" style="display:flex;gap:3px;flex-shrink:0;">
+        <button class="step-mini" data-dir="up"   title="Opp">↑</button>
+        <button class="step-mini" data-dir="down" title="Ned">↓</button>
       </div>
-      <button class="rm-btn" data-rm-step>×</button>
+      <button class="rm-mini" data-rm-step title="Fjern steg">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <div class="step-toolbar">
-      <button class="step-tool-btn" data-cmd="bold"      title="Fet (Ctrl+B)"><b>B</b></button>
-      <button class="step-tool-btn" data-cmd="italic"    title="Kursiv (Ctrl+I)"><i>I</i></button>
-      <button class="step-tool-btn" data-cmd="underline" title="Understrek (Ctrl+U)"><u>U</u></button>
+    <div class="step-timer-field">
+      <label>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke-linecap="round"/></svg>
+        Timer (sekunder)
+      </label>
+      <input type="number" placeholder="300" value="${step?.timer_seconds || ''}" data-step-timer />
     </div>
-    <div class="step-editor-mount" id="${editorId}"></div>
+    <div class="step-editor" id="step-editor-wrap-${editorId}">
+      <div class="step-editor-mount" id="${editorId}"></div>
+      <div class="step-toolbar">
+        <button data-cmd="bold"      title="Fet (Ctrl+B)"><b>B</b></button>
+        <button data-cmd="italic"    title="Kursiv (Ctrl+I)"><i>I</i></button>
+        <button data-cmd="underline" title="Understrek (Ctrl+U)"><u>U</u></button>
+      </div>
+    </div>
   `
   container.appendChild(wrapper)
 
@@ -295,29 +417,43 @@ function appendStepEditor(container, step, ingredients) {
     if (wrapper._chipMousedown) document.removeEventListener('mousedown', wrapper._chipMousedown, true)
     if (activeIngRow === ingRow) { activeIngRow = null; cancelIngRowHide() }
     wrapper.remove()
+    // Renumber remaining steps
+    container.querySelectorAll('.step-num').forEach((el, i) => { el.textContent = i + 1 })
   })
 
   const mountEl = document.getElementById(editorId)
   const editor = new StepEditor(mountEl, {
     ingredients,
     initialDoc: step?.content_doc || null,
-    onUpdate: () => recomputeSums(),
+    onUpdate: () => { recomputeSums(); updatePreview() },
     onFocus: () => {
       lastFocusedStepEditor = editor
       cancelIngRowHide()
       if (activeIngRow && activeIngRow !== ingRow) activeIngRow.classList.remove('active')
       activeIngRow = ingRow
       ingRow.classList.add('active')
+      // Focus state on card + editor wrap
+      wrapper.classList.add('focused')
+      const edWrap = wrapper.querySelector(`#step-editor-wrap-${editorId}`)
+      if (edWrap) edWrap.classList.add('focused')
     },
-    onBlur: () => scheduleIngRowHide(),
+    onBlur: () => {
+      scheduleIngRowHide()
+      wrapper.classList.remove('focused')
+      const edWrap = wrapper.querySelector(`#step-editor-wrap-${editorId}`)
+      if (edWrap) edWrap.classList.remove('focused')
+    },
   })
 
-  wrapper.querySelector('[data-cmd="bold"]').addEventListener('click', () =>
-    editor.editor.chain().focus().toggleBold().run())
-  wrapper.querySelector('[data-cmd="italic"]').addEventListener('click', () =>
-    editor.editor.chain().focus().toggleItalic().run())
-  wrapper.querySelector('[data-cmd="underline"]').addEventListener('click', () =>
-    editor.editor.chain().focus().toggleUnderline().run())
+  wrapper.querySelectorAll('[data-cmd]').forEach(btn => {
+    btn.addEventListener('mousedown', e => {
+      e.preventDefault()
+      const cmd = btn.dataset.cmd
+      if (cmd === 'bold') editor.editor.chain().focus().toggleBold().run()
+      else if (cmd === 'italic') editor.editor.chain().focus().toggleItalic().run()
+      else if (cmd === 'underline') editor.editor.chain().focus().toggleUnderline().run()
+    })
+  })
 
   wireDropTarget(mountEl, editor, { onInsert: () => recomputeSums() })
 
@@ -464,37 +600,37 @@ function cancelIngRowHide() {
 
 // ── HTML row helpers ──────────────────────────────────────────────────────────
 
-function metaRowHtml(label = '', value = '') {
-  return `<div class="dynamic-row">
-    <input placeholder="Etikett" value="${esc(label)}" data-meta-label />
-    <input placeholder="Verdi"   value="${esc(value)}" data-meta-value />
-    <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+function metaRowHtml(label = '', value = '', unit = 'min') {
+  return `<div class="extra-row">
+    <input placeholder="Steketid, hevetid…" value="${esc(label)}" data-meta-label />
+    <input type="text" inputmode="numeric" placeholder="30" value="${esc(value)}" data-meta-value />
+    <input placeholder="min" value="${esc(unit)}" style="max-width:60px;" data-meta-unit />
+    <button class="rm-mini" onclick="this.closest('.extra-row').remove()" title="Fjern">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+    </button>
   </div>`
 }
 
 function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = '') {
   const safeId = id || genId()
-  return `<div class="dynamic-row" data-ing-row>
+  return `<div class="ing-row" data-ing-row>
     <input type="hidden" data-ing-id="${esc(safeId)}" data-ing-id-val value="${esc(safeId)}" />
-    <div class="step-reorder-btns">
-      <button class="step-reorder-btn" data-ing-dir="up"   title="Opp">↑</button>
-      <button class="step-reorder-btn" data-ing-dir="down" title="Ned">↓</button>
-    </div>
-    <input class="amount-input" type="number" step="any" placeholder="700"
-           value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount />
-    <input class="unit-input" placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
+    <input type="number" step="any" placeholder="700"
+           value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount style="text-align:right;" />
+    <input placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
-    <div class="ing-desc-row">
-      <input class="desc-input" placeholder="Beskrivelse (valgfri)" value="${esc(desc||'')}" data-ing-desc />
-      <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
-    </div>
+    <button class="rm-mini" onclick="this.closest('.ing-row').remove()" title="Fjern">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+    </button>
   </div>`
 }
 
 function tipRowHtml(text = '') {
-  return `<div class="dynamic-row">
+  return `<div class="ing-row" style="grid-template-columns:1fr 34px;">
     <input placeholder="Tips" value="${esc(text)}" data-tip />
-    <button class="rm-btn" onclick="this.closest('.dynamic-row').remove()">×</button>
+    <button class="rm-mini" onclick="this.closest('.ing-row').remove()" title="Fjern">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+    </button>
   </div>`
 }
 
@@ -548,10 +684,10 @@ async function save() {
   const rawIngredients = [...document.querySelectorAll('[data-ing-id-val]')].map((el, pos) => ({
     id: el.value,
     position: pos,
-    amount: parseFloat(el.closest('.dynamic-row').querySelector('[data-ing-amount]').value) || null,
-    unit: el.closest('.dynamic-row').querySelector('[data-ing-unit]').value.trim() || null,
-    name: el.closest('.dynamic-row').querySelector('[data-ing-name]').value.trim(),
-    description: el.closest('.dynamic-row').querySelector('[data-ing-desc]').value.trim() || null,
+    amount: parseFloat(el.closest('.ing-row').querySelector('[data-ing-amount]').value) || null,
+    unit: el.closest('.ing-row').querySelector('[data-ing-unit]').value.trim() || null,
+    name: el.closest('.ing-row').querySelector('[data-ing-name]').value.trim(),
+    description: el.closest('.ing-row').querySelector('[data-ing-desc]')?.value.trim() || null,
   })).filter(i => i.name)
 
   const savedIngIds = new Set((recipes.find(r => r.id === editingId)?.ingredients || []).map(i => i.id))
@@ -595,14 +731,16 @@ async function save() {
     description:  document.getElementById('f-desc').value.trim() || null,
     category:     document.getElementById('f-category').value || null,
     tags:         document.getElementById('f-tags').value.split(',').map(s => s.trim()).filter(Boolean),
+    active_time:  parseNumeric(document.getElementById('f-active-time')?.value) || null,
     meta:         [...document.querySelectorAll('[data-meta-label]')].map(el => ({
                     label: el.value.trim(),
-                    value: el.closest('.dynamic-row').querySelector('[data-meta-value]').value.trim(),
+                    value: el.closest('.extra-row').querySelector('[data-meta-value]').value.trim(),
+                    unit:  el.closest('.extra-row').querySelector('[data-meta-unit]')?.value.trim() || '',
                   })).filter(m => m.label),
-    servings_base: parseInt(document.getElementById('f-srv-base').value) || null,
-    servings_unit: document.getElementById('f-srv-unit').value.trim() || null,
-    servings_step: parseInt(document.getElementById('f-srv-step').value) || 1,
-    servings_min:  parseInt(document.getElementById('f-srv-min').value) || 1,
+    servings_base: parseInt(document.getElementById('f-srv-base')?.value) || null,
+    servings_unit: document.getElementById('f-srv-unit')?.value.trim() || null,
+    servings_step: parseInt(document.getElementById('f-srv-step')?.value) || 1,
+    servings_min:  parseInt(document.getElementById('f-srv-min')?.value) || 1,
     tips:          [...document.querySelectorAll('[data-tip]')].map(el => el.value.trim()).filter(Boolean),
     ingredients,
     steps,
@@ -650,9 +788,88 @@ async function del(id) {
 }
 
 function showStatus(msg, ok) {
-  const el = document.getElementById('status')
-  el.textContent = msg
-  el.className = 'status ' + (ok ? 'ok' : 'err')
+  const area = document.getElementById('status-area')
+  if (!area) return
+  const cls = ok
+    ? 'padding:12px 16px;border-radius:10px;font-size:0.88rem;background:color-mix(in srgb,var(--green) 14%,var(--warm-white));color:var(--green);border:1px solid color-mix(in srgb,var(--green) 30%,transparent);'
+    : 'padding:12px 16px;border-radius:10px;font-size:0.88rem;background:color-mix(in srgb,var(--danger) 14%,var(--warm-white));color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);'
+  area.innerHTML = `<div style="${cls}">${esc(msg)}</div>`
+  if (ok) setTimeout(() => { if (area) area.innerHTML = '' }, 3000)
+}
+
+function updatePreview() {
+  const body = document.getElementById('preview-body')
+  const urlEl = document.getElementById('preview-url')
+  if (!body) return
+
+  const id = document.getElementById('f-id')?.value.trim() || ''
+  const title = document.getElementById('f-title')?.value.trim() || ''
+  const desc = document.getElementById('f-desc')?.value.trim() || ''
+  const cat = document.getElementById('f-category')?.value || ''
+  const tagsRaw = document.getElementById('f-tags')?.value || ''
+  const activeTime = document.getElementById('f-active-time')?.value || ''
+  const srvBase = document.getElementById('f-srv-base')?.value || ''
+  const srvUnit = document.getElementById('f-srv-unit')?.value || 'porsjoner'
+  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean)
+
+  const metas = [...document.querySelectorAll('.extra-row')].map(row => ({
+    label: row.querySelector('[data-meta-label]')?.value.trim() || '',
+    value: row.querySelector('[data-meta-value]')?.value.trim() || '',
+    unit: row.querySelector('[data-meta-unit]')?.value.trim() || '',
+  })).filter(m => m.label && m.value)
+
+  const ings = getCurrentIngredients()
+
+  if (urlEl) urlEl.textContent = id ? `kokebok.bergee.net/r/${id}` : 'kokebok.bergee.net/r/…'
+
+  if (!title) {
+    body.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:40px 0;">Fyll inn skjema for å se forhåndsvisning</div>`
+    return
+  }
+
+  const catBadge = cat ? `<span class="cat-badge" style="font-size:0.68rem;padding:3px 10px;">${esc(cap(cat))}</span>` : ''
+  const tagPills = tags.map(t => `<span class="tag" style="font-size:0.68rem;padding:3px 10px;">${esc(t)}</span>`).join('')
+
+  const metaHtml = [
+    activeTime ? `<div class="mi"><label>Aktiv tid</label><b>~${activeTime} min</b></div>` : '',
+    srvBase ? `<div class="mi"><label>Porsjoner</label><b>${srvBase} ${srvUnit}</b></div>` : '',
+    ...metas.map(m => `<div class="mi"><label>${esc(m.label)}</label><b>${esc(m.value)} ${esc(m.unit)}</b></div>`),
+  ].filter(Boolean).join('')
+
+  const ingHtml = ings.length ? `
+    <div class="pv-section-title">Ingredienser</div>
+    ${ings.map(i => `<div class="pv-ing"><span class="amt">${esc([i.amount, i.unit].filter(Boolean).join(' '))}</span><span class="nm">${esc(i.name)}</span></div>`).join('')}
+    <div class="pv-block-gap"></div>
+  ` : ''
+
+  const stepsData = stepEditors.map((e, i) => ({
+    num: i + 1,
+    title: e.getTitle(),
+    html: e.editor.editor.getHTML(),
+  })).filter(s => s.title || s.html !== '<p></p>')
+
+  const stepsHtml = stepsData.length ? `
+    <div class="pv-section-title">Fremgangsmåte</div>
+    ${stepsData.map(s => `
+      <div class="pv-step">
+        <span class="n">${s.num}</span>
+        <div>
+          ${s.title ? `<div class="st">${esc(s.title)}</div>` : ''}
+          <div class="sx">${s.html}</div>
+        </div>
+      </div>`).join('')}
+    <div class="pv-block-gap"></div>
+  ` : ''
+
+  body.innerHTML = `
+    <div class="pv-label">${esc(cat)}${tags[0] ? ' · ' + esc(tags[0]) : ''}</div>
+    <div class="pv-title">${esc(title)}</div>
+    ${desc ? `<div class="pv-desc">${esc(desc)}</div>` : ''}
+    ${catBadge || tagPills ? `<div class="pv-tags">${catBadge}${tagPills}</div>` : ''}
+    ${metaHtml ? `<div class="pv-meta">${metaHtml}</div>` : ''}
+    ${ingHtml}
+    ${stepsHtml}
+  `
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

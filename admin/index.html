@@ -5,218 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kokebok Admin</title>
   <link rel="stylesheet" href="/src/main.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-  <script>const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);</script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script>
+    const t = localStorage.getItem('theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  </script>
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    /* CSS vars come from main.css — aliased here for legacy component styles */
-    :root { --white: var(--warm-white); --muted: var(--text-muted); }
-    body { background: var(--cream); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
-
-    /* ── Edit view chrome ──────────────────────────────── */
-    .edit-header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 0 20px; height: 56px;
-      background: color-mix(in srgb, var(--cream) 92%, transparent);
-      backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--brown-light);
-      position: sticky; top: 0; z-index: 50;
-    }
-    .edit-header-back {
-      color: var(--muted); background: none; border: none;
-      cursor: pointer; font-size: 0.875rem; padding: 5px 10px; border-radius: 8px;
-      transition: color 0.15s, background 0.15s; white-space: nowrap; flex-shrink: 0;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .edit-header-back:hover { color: var(--brown); background: color-mix(in srgb, var(--brown) 6%, transparent); }
-    .edit-header-title {
-      flex: 1; font-size: 1rem; font-weight: 500; color: var(--brown);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
-    }
-    .theme-toggle-btn {
-      flex-shrink: 0; background: none; border: 1px solid var(--brown-light);
-      border-radius: 50%; width: 34px; height: 34px; cursor: pointer;
-      font-size: 0.9rem; color: var(--text-muted); display: flex; align-items: center;
-      justify-content: center; transition: border-color 0.2s, color 0.2s; line-height: 1;
-    }
-    .theme-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .main { padding: 32px; }
-
-    /* ── Form ─────────────────────────────────────────── */
-    .form-grid { display: grid; gap: 16px; max-width: 800px; }
-    .field { display: flex; flex-direction: column; gap: 4px; }
-    .field label { font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
-    .field input, .field textarea, .field select {
-      padding: 8px 12px; border: 1px solid var(--brown-light); border-radius: 6px;
-      background: var(--white); font-family: inherit; font-size: 0.9rem; color: var(--text);
-      outline: none; transition: border-color 0.15s;
-    }
-    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
-    .field textarea { resize: vertical; min-height: 80px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .section-head { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
-    .section-head span { font-weight: 600; font-size: 0.9rem; color: var(--brown); }
-    .add-row-btn { padding: 4px 10px; background: none; border: 1px dashed var(--brown-light); border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: var(--muted); }
-    .add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .dynamic-row { display: flex; gap: 8px; align-items: flex-start; }
-    .dynamic-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
-    .amount-input { flex: 0 0 80px !important; }
-    .unit-input   { flex: 0 0 60px !important; }
-    .ing-desc-row { display: flex; gap: 8px; flex: 1; min-width: 0; align-items: flex-start; }
-    .rm-btn { padding: 6px 8px; background: none; border: 1px solid var(--brown-light); border-radius: 4px; cursor: pointer; color: var(--muted); flex-shrink: 0; font-size: 0.9rem; line-height: 1; }
-    .rm-btn:hover { border-color: #c00; color: #c00; }
-    .actions { display: flex; gap: 10px; margin-top: 8px; }
-    .save-btn { padding: 10px 24px; background: var(--green); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
-    .save-btn:hover { opacity: 0.85; }
-    .cancel-btn { padding: 10px 16px; background: none; border: 1px solid var(--brown-light); color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-    .cancel-btn:hover { border-color: var(--brown); color: var(--brown); }
-    .del-btn { padding: 10px 16px; background: none; border: 1px solid #c55; color: #c55; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
-    .del-btn:hover { background: #c55; color: white; }
-    .status { margin-top: 10px; font-size: 0.85rem; padding: 8px 12px; border-radius: 6px; display: none; }
-    .status.ok  { background: #d4edda; color: #155724; display: block; }
-    .status.err { background: #f8d7da; color: #721c24; display: block; }
-
-    /* ── Steps + ingredient sidebar two-column layout ─── */
-    .steps-layout { display: grid; grid-template-columns: 1fr 200px; gap: 16px; align-items: start; }
-    .steps-col { min-width: 0; }
-    #ing-sidebar-col { align-self: stretch; }
-    .ing-sidebar-sticky { position: sticky; top: 60px; }
-    @media(max-width: 700px) {
-      .steps-layout { grid-template-columns: 1fr; }
-      .ing-sidebar-sticky { position: static; }
-    }
-
-    /* ── Step editor ──────────────────────────────────── */
-    .step-wrapper { border: 1px solid var(--brown-light); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-    .step-header { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
-    .step-reorder-btns { display: flex; gap: 2px; flex-shrink: 0; }
-    .step-reorder-btn { padding: 4px 6px; background: none; border: 1px solid var(--brown-light); border-radius: 4px; cursor: pointer; color: var(--muted); font-size: 0.8rem; line-height: 1; }
-    .step-reorder-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .step-title-input { flex: 1; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
-    .step-timer-input { flex: 0 0 120px; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); font-size: 0.9rem; }
-    .step-toolbar { display: flex; gap: 4px; margin-bottom: 4px; }
-    .step-tool-btn { padding: 2px 9px; border: 1px solid var(--brown-light); border-radius: 4px; background: var(--white); cursor: pointer; font-size: 0.85rem; color: var(--brown); }
-    .step-tool-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .step-editor-mount { border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); padding: 8px 12px; min-height: 60px; }
-    .tiptap { outline: none; }
-    .tiptap p { margin: 0; }
-    .tiptap strong { font-weight: 700; }
-
-    /* ── Ingredient chip ──────────────────────────────── */
-    .ing-chip {
-      display: inline-block; background: var(--accent); color: white;
-      border-radius: 4px; padding: 1px 6px; font-size: 0.82rem;
-      margin: 0 1px; cursor: default; white-space: nowrap;
-    }
-    .ing-chip-qty { font-weight: 600; }
-    .ing-chip-name { font-weight: 400; opacity: 0.88; }
-
-    /* ── Ingredient sidebar panel ─────────────────────── */
-    .ing-sidebar-panel { border: 1px solid var(--brown-light); border-radius: 8px; padding: 12px; margin-bottom: 16px; max-width: 800px; }
-    .ing-sidebar-header { font-weight: 600; font-size: 0.9rem; color: var(--brown); margin-bottom: 8px; }
-    .ing-sidebar-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-    .ing-sidebar-item { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 6px; cursor: grab; background: var(--white); border: 1px solid var(--brown-light); font-size: 0.85rem; }
-    .ing-sidebar-item:hover { border-color: var(--accent); }
-    .ing-sidebar-name { flex: 1; }
-    .ing-total { color: var(--muted); }
-    .ing-remaining { font-size: 0.75rem; color: var(--accent); font-style: italic; }
-    .ing-sum-badge { font-size: 0.75rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; min-width: 32px; text-align: center; }
-    .sum-grey   { background: #e0e0e0; color: #666; }
-    .sum-green  { background: #d4edda; color: #155724; }
-    .sum-orange { background: #fff3cd; color: #856404; }
-
-    /* ── Paste-raw modal ──────────────────────────────── */
-    .raw-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
-    .raw-modal-overlay.hidden { display: none; }
-    .raw-modal { background: var(--white); border-radius: 12px; padding: 24px; width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
-    .raw-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .raw-modal-header h2 { font-size: 1rem; color: var(--brown); }
-    .rm-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--muted); }
-    .raw-modal textarea { width: 100%; font-family: monospace; font-size: 0.82rem; padding: 10px; border: 1px solid var(--brown-light); border-radius: 6px; margin-bottom: 10px; resize: vertical; }
-    .raw-modal-actions { display: flex; gap: 8px; margin-bottom: 10px; }
-    .raw-preview { background: var(--cream); border-radius: 6px; padding: 12px; font-size: 0.85rem; margin-bottom: 10px; }
-    .raw-preview pre { font-size: 0.8rem; margin-top: 8px; white-space: pre-wrap; }
-    .raw-format-badge { background: var(--brown-light); color: white; border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; margin-left: 8px; }
-    .raw-modal-footer { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
-    .raw-warnings { flex: 1; font-size: 0.8rem; color: #856404; white-space: pre-wrap; }
-
-    /* ── Raw YAML mode ────────────────────────────────── */
-    .raw-toggle-bar { margin-top: 16px; }
-    .raw-toggle-btn { padding: 6px 14px; border: 1px dashed var(--brown-light); border-radius: 6px; background: none; cursor: pointer; color: var(--muted); font-size: 0.85rem; }
-    .raw-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .raw-editor { margin-top: 12px; }
-    .raw-editor textarea { width: 100%; font-family: monospace; font-size: 0.85rem; padding: 12px; border: 1px solid var(--brown-light); border-radius: 6px; background: var(--white); resize: vertical; }
-    .raw-error { color: #721c24; background: #f8d7da; border-radius: 4px; padding: 8px; font-size: 0.85rem; margin-top: 8px; }
-    .raw-actions { display: flex; gap: 10px; margin-top: 10px; }
-
-    /* ── Factor popover ───────────────────────────────── */
-    .factor-popover { position: fixed; z-index: 1000; background: white; border: 1px solid var(--brown-light); border-radius: 8px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 240px; }
-    .factor-popover.hidden { display: none; }
-    .fp-mode-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
-    .fp-tab { flex: 1; padding: 4px 0; border: 1px solid var(--brown-light); border-radius: 4px; background: none; cursor: pointer; font-size: 0.8rem; color: var(--muted); }
-    .fp-tab-active { background: var(--brown); color: white; border-color: var(--brown); }
-    .fp-preview { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; min-height: 1.2em; }
-    .fp-input-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-    .fp-input-row input[type=number] { flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid var(--brown-light); border-radius: 4px; font-size: 0.9rem; }
-    .fp-input-row input[type=range] { width: 100%; margin-bottom: 4px; }
-    .fp-unit-label { color: var(--muted); font-size: 0.9rem; }
-    .fp-actions { display: flex; gap: 8px; justify-content: flex-end; }
-    .fp-actions button { padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; border: 1px solid var(--brown-light); background: none; }
-    .fp-ok-btn { background: var(--green) !important; color: white !important; border-color: var(--green) !important; }
-
-    /* ── View site link ───────────────────────────────── */
-    .view-site-btn { padding: 10px 16px; background: none; border: 1px solid var(--brown-light); color: var(--muted); border-radius: 6px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; transition: border-color 0.15s, color 0.15s; }
-    .view-site-btn:hover { border-color: var(--brown); color: var(--brown); }
-
-    /* ── Inline ingredient row (mobile step editor) ───── */
-    .step-ing-row { display: none; }
-    .step-ing-row.active {
-      display: flex; overflow-x: auto; gap: 6px;
-      padding: 8px 0 4px; border-top: 1px solid var(--brown-light); margin-top: 6px;
-      -webkit-overflow-scrolling: touch; scrollbar-width: none;
-    }
-    .step-ing-row.active::-webkit-scrollbar { display: none; }
-    .step-ing-pill {
-      flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px;
-      padding: 4px 8px; background: var(--cream); border: 1px solid var(--brown-light);
-      border-radius: 12px; cursor: pointer; font-size: 0.78rem; min-height: 30px;
-      white-space: nowrap; -webkit-tap-highlight-color: transparent;
-      font-family: inherit; color: var(--text);
-    }
-    .step-ing-pill:active { opacity: 0.75; }
-    .step-ing-pill-name { font-weight: 500; }
-    .step-ing-pill-rem { font-size: 0.75rem; opacity: 0.8; }
-    .step-ing-pill.pill-grey  { background: var(--cream); border-color: var(--brown-light); color: var(--text); }
-    .step-ing-pill.pill-orange { background: #fff3cd; border-color: #c8962a; color: #7a5200; }
-    .step-ing-pill.pill-green  { background: #d4edda; border-color: #4a6741; color: #155724; }
-
-    /* ── Mobile editor overrides ──────────────────────── */
-    @media(max-width:600px) {
-      input, select, textarea { font-size: 16px; }
-      .main { padding: 16px; }
-      .form-grid { max-width: 100%; }
-      .row { grid-template-columns: 1fr 1fr; }
-      .field input, .field select, .field textarea { padding: 6px 8px; }
-      .dynamic-row { flex-wrap: wrap; }
-      .dynamic-row input { min-width: 0; padding: 6px 8px; }
-      .ing-desc-row { flex: 1 1 100%; }
-      .amount-input { flex: 0 0 54px !important; }
-      .unit-input   { flex: 0 0 64px !important; }
-      .step-header { flex-wrap: wrap; }
-      .step-title-input { flex: 1 1 100%; }
-      .step-timer-input { flex: 0 0 100px; }
-      #ing-sidebar-col { display: none; }
-      .steps-layout { grid-template-columns: 1fr; }
-      .actions { flex-wrap: wrap; }
-      .save-btn { flex: 1 1 100%; }
-    }
-
-    @media(min-width:601px) {
-      .step-ing-row { display: none !important; }
-    }
-  </style>
 </head>
 <body>
   <!-- List view (default) -->
@@ -224,14 +19,22 @@
 
   <!-- Edit view (hidden initially) -->
   <div id="view-edit" hidden>
-    <div class="edit-header">
-      <button class="edit-header-back" id="back-btn">← Oppskrifter</button>
-      <h1 class="edit-header-title" id="form-title">Ny oppskrift</h1>
-      <button class="theme-toggle-btn" id="edit-theme-toggle" aria-label="Bytt tema">☾</button>
+    <div class="edit-bar">
+      <div class="edit-bar-inner">
+        <button class="back-link" id="back-btn">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7" stroke-linecap="round"/></svg>
+          Oppskrifter
+        </button>
+        <span class="title-crumb" id="form-title">Ny oppskrift</span>
+        <div class="edit-bar-actions">
+          <span class="unsaved-dot" id="unsaved-indicator" style="display:none">
+            <span class="d"></span> Ikke lagret
+          </span>
+          <button class="icon-btn" id="edit-theme-toggle" aria-label="Bytt tema">☾</button>
+        </div>
+      </div>
     </div>
-    <div class="main">
-      <div id="form-area"></div>
-    </div>
+    <div id="form-area"></div>
   </div>
 
   <script type="module" src="/src/main.js"></script>

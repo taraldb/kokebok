@@ -1,53 +1,61 @@
+const PRESETS = [
+  { label: '½',  value: 0.5   },
+  { label: '⅔',  value: 0.667 },
+  { label: '1',  value: 1     },
+  { label: '1½', value: 1.5   },
+  { label: '2',  value: 2     },
+  { label: '3',  value: 3     },
+]
+
 export class FactorPopover {
   constructor() {
     this._ing = null
     this._factor = 1.0
-    this._mode = 'amount' // 'amount' | 'factor' — persists across opens
     this._onCommit = null
     this._dismiss = null
 
     this._el = document.createElement('div')
-    this._el.className = 'factor-popover hidden'
+    this._el.className = 'factor-pop hidden'
     this._el.innerHTML = `
-      <div class="fp-mode-tabs">
-        <button class="fp-tab" data-mode="amount">Mengde</button>
-        <button class="fp-tab" data-mode="factor">Faktor</button>
+      <div class="fp-name" id="fp-name"></div>
+      <div class="fp-presets">
+        ${PRESETS.map(p => `<button data-factor="${p.value}">${p.label}</button>`).join('')}
       </div>
-      <div class="fp-preview" id="fp-preview"></div>
-      <div id="fp-amount-row" class="fp-input-row">
-        <input type="number" min="0" step="any" id="fp-amount-input" />
-        <span class="fp-unit-label" id="fp-unit-label"></span>
+      <div class="fp-amount" id="fp-amount-section">
+        <span>Mengde</span>
+        <div class="fp-amount-in">
+          <input type="number" min="0" step="any" id="fp-amount-input" />
+          <em id="fp-unit-label"></em>
+        </div>
       </div>
-      <div id="fp-factor-row" class="fp-input-row" style="display:none">
-        <input type="range" min="0.05" max="3" step="0.05" value="1" id="fp-slider" />
-        <input type="number" min="0.01" step="0.01" value="1" id="fp-factor-input" />
-      </div>
-      <div class="fp-actions">
-        <button id="fp-cancel">Avbryt</button>
-        <button id="fp-ok" class="fp-ok-btn">OK</button>
+      <div class="fp-foot">
+        <span class="fp-factor-tag" id="fp-factor-tag">× 1.00</span>
+        <button class="fp-rm" id="fp-rm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+          Nullstill
+        </button>
+        <button class="fp-ok" id="fp-ok">OK</button>
       </div>
     `
     document.body.appendChild(this._el)
 
-    this._el.querySelectorAll('.fp-tab').forEach(btn =>
-      btn.addEventListener('click', () => this._setMode(btn.dataset.mode))
+    this._el.querySelectorAll('.fp-presets button').forEach(btn =>
+      btn.addEventListener('click', () => {
+        this._factor = parseFloat(btn.dataset.factor)
+        this._sync()
+      })
     )
     this._el.querySelector('#fp-amount-input').addEventListener('input', e => {
       const v = parseFloat(e.target.value)
       if (!isNaN(v) && v >= 0 && this._ing?.amount) {
         this._factor = v / this._ing.amount
-        this._sync('amount')
+        this._sync('skip-amount')
       }
     })
-    this._el.querySelector('#fp-slider').addEventListener('input', e => {
-      this._factor = parseFloat(e.target.value)
-      this._sync('slider')
+    this._el.querySelector('#fp-rm').addEventListener('click', () => {
+      this._factor = 1.0
+      this._sync()
     })
-    this._el.querySelector('#fp-factor-input').addEventListener('input', e => {
-      const v = parseFloat(e.target.value)
-      if (!isNaN(v) && v > 0) { this._factor = v; this._sync('factor-input') }
-    })
-    this._el.querySelector('#fp-cancel').addEventListener('click', () => this.hide())
     this._el.querySelector('#fp-ok').addEventListener('click', () => {
       if (this._onCommit) this._onCommit(this._factor)
       this.hide()
@@ -60,11 +68,10 @@ export class FactorPopover {
     this._onCommit = onCommit
 
     const hasAmount = ing?.amount != null
-    this._el.querySelector('[data-mode="amount"]').style.display = hasAmount ? '' : 'none'
-    if (!hasAmount) this._mode = 'factor'
+    this._el.querySelector('#fp-amount-section').style.display = hasAmount ? '' : 'none'
+    this._el.querySelector('#fp-name').textContent = ing?.name ?? ''
 
-    this._setMode(this._mode)
-    this._sync('init')
+    this._sync()
 
     this._el.classList.remove('hidden')
     this._el.style.left = `${position.x}px`
@@ -84,42 +91,22 @@ export class FactorPopover {
     }
   }
 
-  _setMode(mode) {
-    this._mode = mode
-    this._el.querySelectorAll('.fp-tab').forEach(t =>
-      t.classList.toggle('fp-tab-active', t.dataset.mode === mode)
-    )
-    this._el.querySelector('#fp-amount-row').style.display = mode === 'amount' ? '' : 'none'
-    this._el.querySelector('#fp-factor-row').style.display = mode === 'factor' ? '' : 'none'
-  }
-
   _sync(source) {
     const ing = this._ing
-    const amountInput  = this._el.querySelector('#fp-amount-input')
-    const slider       = this._el.querySelector('#fp-slider')
-    const factorInput  = this._el.querySelector('#fp-factor-input')
-    const unitLabel    = this._el.querySelector('#fp-unit-label')
+    const amountInput = this._el.querySelector('#fp-amount-input')
+    const unitLabel   = this._el.querySelector('#fp-unit-label')
+    const factorTag   = this._el.querySelector('#fp-factor-tag')
 
-    if (source !== 'slider')       slider.value      = String(Math.min(3, Math.max(0.05, this._factor)))
-    if (source !== 'factor-input') factorInput.value = this._factor.toFixed(2)
-    if (ing?.amount != null) {
-      const amt = ing.amount * this._factor
-      if (source !== 'amount') amountInput.value = parseFloat(amt.toFixed(6))
+    factorTag.textContent = `× ${this._factor.toFixed(2)}`
+
+    if (ing?.amount != null && source !== 'skip-amount') {
+      amountInput.value = parseFloat((ing.amount * this._factor).toFixed(6))
       unitLabel.textContent = ing.unit || ''
     }
 
-    this._updatePreview()
-  }
-
-  _updatePreview() {
-    const ing = this._ing
-    const el  = this._el.querySelector('#fp-preview')
-    if (!ing || ing.amount == null) {
-      el.textContent = `Faktor: ${this._factor.toFixed(2)}`
-      return
-    }
-    const amt    = ing.amount * this._factor
-    const amtStr = parseFloat(amt.toFixed(4))
-    el.textContent = `${amtStr} ${ing.unit || ''} (× ${this._factor.toFixed(2)})`
+    // Highlight matching preset
+    this._el.querySelectorAll('.fp-presets button').forEach(btn => {
+      btn.classList.toggle('on', Math.abs(parseFloat(btn.dataset.factor) - this._factor) < 0.001)
+    })
   }
 }

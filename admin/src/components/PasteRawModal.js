@@ -12,22 +12,21 @@ export class PasteRawModal {
 
   _create() {
     const el = document.createElement('div')
-    el.className = 'raw-modal-overlay hidden'
+    el.className = 'modal-overlay hidden'
     el.innerHTML = `
-      <div class="raw-modal">
-        <div class="raw-modal-header">
-          <h2>Lim inn oppskrift (JSON / YAML / Markdown)</h2>
-          <button class="rm-close" aria-label="Lukk">✕</button>
+      <div class="modal paste-modal">
+        <div class="paste-head">
+          <h3>Lim inn oppskrift</h3>
+          <button class="icon-btn rm-close" aria-label="Lukk">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+          </button>
         </div>
-        <textarea id="raw-input" placeholder="Lim inn oppskrift her..." rows="12" spellcheck="false"></textarea>
-        <div class="raw-modal-actions">
-          <button id="raw-parse-btn" class="save-btn">Forhåndsvis</button>
-        </div>
-        <div id="raw-preview" class="raw-preview hidden"></div>
-        <div id="raw-parse-error" class="raw-error hidden"></div>
-        <div class="raw-modal-footer hidden" id="raw-footer">
-          <span id="raw-warnings" class="raw-warnings"></span>
-          <button id="raw-save-btn" class="save-btn">Lagre oppskrift</button>
+        <textarea id="raw-input" class="paste-area" placeholder="Lim inn JSON, YAML eller Markdown…" rows="12" spellcheck="false"></textarea>
+        <div id="raw-parse-error" class="paste-err hidden"></div>
+        <div id="raw-preview" class="paste-preview hidden"></div>
+        <div class="modal-actions">
+          <button id="raw-parse-btn" class="ghost-btn">Forhåndsvis</button>
+          <button id="raw-save-btn" class="primary-btn hidden">Lagre oppskrift</button>
         </div>
       </div>
     `
@@ -48,7 +47,7 @@ export class PasteRawModal {
     this._recipe = null
     this._el.querySelector('#raw-input').value = ''
     this._el.querySelector('#raw-preview').classList.add('hidden')
-    this._el.querySelector('#raw-footer').classList.add('hidden')
+    this._el.querySelector('#raw-save-btn').classList.add('hidden')
     this._el.querySelector('#raw-parse-error').classList.add('hidden')
   }
 
@@ -56,12 +55,12 @@ export class PasteRawModal {
     const text = this._el.querySelector('#raw-input').value.trim()
     if (!text) return
 
-    const errorEl = this._el.querySelector('#raw-parse-error')
+    const errorEl   = this._el.querySelector('#raw-parse-error')
     const previewEl = this._el.querySelector('#raw-preview')
-    const footerEl = this._el.querySelector('#raw-footer')
+    const saveBtn   = this._el.querySelector('#raw-save-btn')
     errorEl.classList.add('hidden')
     previewEl.classList.add('hidden')
-    footerEl.classList.add('hidden')
+    saveBtn.classList.add('hidden')
 
     const res = await fetch('/api/admin/import-raw', {
       method: 'POST',
@@ -77,22 +76,19 @@ export class PasteRawModal {
     }
 
     this._recipe = data.recipe
+    const warnings = data.warnings?.length
+      ? `<div class="pp-warn">${data.warnings.map(w => `<span>${esc(w)}</span>`).join('')}</div>`
+      : ''
     previewEl.innerHTML = `
-      <strong>${esc(data.recipe.title)}</strong>
-      <span class="raw-format-badge">${esc(data.format)}</span><br>
-      <small>${data.recipe.ingredients.length} ingredienser, ${data.recipe.steps.length} steg</small>
-      <pre>${esc(JSON.stringify({ id: data.recipe.id, tags: data.recipe.tags, meta: data.recipe.meta }, null, 2))}</pre>
+      <div class="pp-title">
+        <span>${esc(data.recipe.title)}</span>
+        <span class="pp-badge">${esc(data.format)}</span>
+      </div>
+      <div class="pp-meta">${data.recipe.ingredients.length} ingredienser · ${data.recipe.steps.length} steg</div>
+      ${warnings}
     `
     previewEl.classList.remove('hidden')
-
-    const warnEl = this._el.querySelector('#raw-warnings')
-    if (data.warnings?.length) {
-      warnEl.textContent = data.warnings.join('\n')
-      warnEl.classList.remove('hidden')
-    } else {
-      warnEl.textContent = ''
-    }
-    footerEl.classList.remove('hidden')
+    saveBtn.classList.remove('hidden')
   }
 
   async _save() {

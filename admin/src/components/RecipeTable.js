@@ -13,10 +13,18 @@ function isDark() {
   if (t === 'light') return false
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
-
 function themeIcon() { return isDark() ? '☀' : '☾' }
 
-const PENCIL = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`
+const SVG_SEARCH = `<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35" stroke-linecap="round"/></svg>`
+const SVG_PLUS   = `<svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round"/></svg>`
+const SVG_PASTE  = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10" stroke-linecap="round"/></svg>`
+const SVG_ROWS   = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>`
+const SVG_COMPACT= `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 10h16M4 14h16M4 18h16" stroke-linecap="round"/></svg>`
+const SVG_FOLDER = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-linecap="round"/></svg>`
+const SVG_TRASH  = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke-linecap="round"/></svg>`
+const SVG_TAG    = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1" fill="currentColor"/></svg>`
+const SVG_PENCIL = `<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-linecap="round"/></svg>`
+const SVG_DOTS   = `<svg width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>`
 
 export class RecipeTable {
   constructor(container, { onEdit, onNew, onPaste }) {
@@ -34,177 +42,96 @@ export class RecipeTable {
     this.filterCategory = ''
     this.filterTags = new Set()
     this.allTags = []
+    this.compact = false
 
     this._mount()
   }
 
   _mount() {
     this.container.innerHTML = `
-      <!-- Nav bar — matches frontend style -->
-      <nav class="sticky top-0 z-20 border-b border-brown-light"
-           style="background: color-mix(in srgb, var(--cream) 92%, transparent); backdrop-filter: blur(8px);">
-        <div class="max-w-[1100px] mx-auto flex items-center gap-4 px-6 h-14">
-
-          <!-- Logo + breadcrumb -->
-          <div class="flex items-center gap-2 flex-shrink-0 min-w-0">
-            <img src="/assets/logo.png" alt="" class="w-7 h-7 rounded-md flex-shrink-0" />
-            <span class="text-brown flex items-center gap-1.5 text-sm min-w-0">
-              <span class="flex-shrink-0 tracking-tight" style="font-family: 'Playfair Display', serif; font-size: 1.05rem;">Kokebok</span>
-              <span class="text-brown-light/50 flex-shrink-0">/</span>
-              <span class="text-muted font-normal truncate">Oppskrifter</span>
-              <span id="rt-count" class="text-muted/35 text-xs tabular-nums flex-shrink-0 ml-0.5"></span>
-            </span>
+      <div class="app">
+        <!-- Nav -->
+        <nav class="nav">
+          <div class="nav-inner">
+            <a class="nav-logo" href="/" target="_blank">
+              <img src="/assets/logo.png" alt="" />
+              <b>Kokebok</b>
+            </a>
+            <span class="nav-crumb">Admin</span>
+            <span class="nav-spacer"></span>
+            <button class="ghost-btn" id="rt-paste-btn">${SVG_PASTE} Lim inn</button>
+            <button class="primary-btn" id="rt-new-btn">${SVG_PLUS} Ny oppskrift</button>
+            <button class="icon-btn" id="rt-theme-toggle" title="Bytt tema">${themeIcon()}</button>
           </div>
+        </nav>
 
-          <div class="flex-1"></div>
-
-          <!-- Actions -->
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <button id="rt-paste-btn"
-              class="hidden sm:inline-flex items-center gap-1.5 border border-brown-light hover:border-brown-light text-muted hover:text-brown px-3 py-1.5 rounded-full text-sm transition-colors">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-              Importer
-            </button>
-            <button id="rt-new-btn"
-              class="flex items-center gap-1.5 bg-accent hover:bg-accent/90 active:scale-95 text-white px-4 py-1.5 rounded-full text-sm font-medium transition-all">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-              <span class="hidden sm:inline">Ny oppskrift</span>
-              <span class="sm:hidden">Ny</span>
-            </button>
-            <button id="rt-theme-toggle"
-              class="flex-shrink-0 flex items-center justify-center w-[34px] h-[34px] rounded-full border border-brown-light text-muted hover:border-accent hover:text-accent transition-colors text-[0.9rem]"
-              aria-label="Bytt tema">${themeIcon()}</button>
-          </div>
-        </div>
-      </nav>
-
-      <!-- Filter bar -->
-      <div class="border-b border-brown-light/20" style="background: color-mix(in srgb, var(--cream) 80%, transparent);">
-        <div class="max-w-[1100px] mx-auto px-6 py-2.5 flex flex-wrap gap-2 items-center">
-          <div class="relative flex-1 min-w-32 max-w-xs">
-            <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted/40 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-            </svg>
-            <input id="rt-search" type="search" placeholder="Søk…" autocomplete="off"
-              class="w-full bg-kokebok-white/60 border border-brown-light/40 rounded-lg pl-8 pr-3 py-1.5 text-sm text-brown placeholder:text-muted/40 outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all" />
-          </div>
-
-          <select id="rt-cat-filter"
-            class="bg-kokebok-white/60 border border-brown-light/40 rounded-lg px-3 py-1.5 text-sm text-brown outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/10 transition-all cursor-pointer">
-            <option value="">Alle kategorier</option>
-            ${CATEGORIES.map(c => `<option value="${c}">${cap(c)}</option>`).join('')}
-          </select>
-
-          <div id="rt-tag-filter-wrap" class="relative">
-            <button id="rt-tag-filter-btn"
-              class="flex items-center gap-1.5 bg-kokebok-white/60 border border-brown-light/40 rounded-lg px-3 py-1.5 text-sm text-muted hover:text-brown hover:border-brown-light transition-colors">
-              Tagger
-              <span id="rt-tag-count" class="hidden bg-accent text-white rounded-full text-xs px-1.5 leading-5 min-w-[18px] text-center font-medium">0</span>
-              <svg class="w-3 h-3 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>
-            </button>
-            <div id="rt-tag-dropdown"
-              class="hidden absolute top-full left-0 mt-1.5 bg-kokebok-white border border-brown-light/30 rounded-xl shadow-lg p-2 min-w-[180px] z-30 max-h-60 overflow-y-auto">
-              <div id="rt-tag-list" class="flex flex-col gap-0.5"></div>
+        <!-- Page content -->
+        <div class="wrap">
+          <!-- Header -->
+          <header class="page-head">
+            <div>
+              <h1>Oppskrifter</h1>
+              <p>
+                <span class="count" id="rt-count">0</span> oppskrifter
+              </p>
             </div>
-          </div>
+          </header>
 
-          <button id="rt-clear-filters" class="hidden items-center gap-1 text-accent/70 hover:text-accent text-sm transition-colors px-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-            Nullstill
-          </button>
-        </div>
-      </div>
-
-      <!-- Page content -->
-      <div id="rt-content" class="max-w-[1100px] mx-auto px-6 py-5 pb-28">
-
-        <!-- Desktop table in card -->
-        <div class="hidden sm:block rounded-2xl border border-brown-light/20 shadow-sm overflow-hidden" id="rt-table-card">
-          <table class="w-full text-sm border-collapse bg-kokebok-white" id="rt-table">
-            <thead>
-              <tr class="border-b border-brown-light/20" style="background: color-mix(in srgb, var(--cream) 60%, var(--warm-white));">
-                <th class="w-10 pl-5 pr-2 py-3">
-                  <input type="checkbox" id="rt-select-all"
-                    class="rounded border-brown-light/50 cursor-pointer accent-accent" />
-                </th>
-                ${this._thHtml('title', 'Navn')}
-                ${this._thHtml('category', 'Kategori')}
-                <th class="px-4 py-3 text-[11px] font-semibold text-muted/70 uppercase tracking-wider text-left select-none">Tagger</th>
-                ${this._thHtml('updated_at', 'Oppdatert')}
-                ${this._thHtml('created_at', 'Opprettet')}
-                <th class="w-14 pr-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody id="rt-tbody"></tbody>
-          </table>
-        </div>
-
-        <!-- Mobile cards in card -->
-        <div class="sm:hidden rounded-2xl border border-brown-light/20 shadow-sm overflow-hidden divide-y divide-brown-light/15 bg-kokebok-white" id="rt-cards"></div>
-
-        <!-- Empty state -->
-        <div id="rt-empty" class="hidden py-24 flex flex-col items-center justify-center gap-3">
-          <div class="w-14 h-14 rounded-2xl bg-brown/[0.05] flex items-center justify-center">
-            <svg class="w-7 h-7 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-          </div>
-          <div class="text-center">
-            <p class="text-muted font-medium text-sm">Ingen oppskrifter funnet</p>
-            <p class="text-muted/50 text-xs mt-0.5">Prøv å endre søk eller filtre</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Batch action bar: always-dark floating panel -->
-      <div id="rt-batch-bar"
-        class="hidden fixed bottom-0 left-0 right-0 border-t border-white/[0.07] shadow-2xl z-30"
-        style="background: var(--batch-bar-bg); backdrop-filter: blur(10px);">
-        <div class="max-w-[1100px] mx-auto px-6 py-3 flex flex-wrap items-center gap-3">
-          <span id="rt-batch-count" class="text-sm font-semibold min-w-[70px] shrink-0 text-white/90"></span>
-
-          <div class="flex items-center gap-2">
-            <span class="text-white/35 text-xs hidden sm:block">Kategori</span>
-            <select id="rt-batch-cat"
-              class="bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-white/90 outline-none focus:bg-white/15 cursor-pointer">
-              <option value="" class="bg-[#1a120c]">— velg —</option>
-              <option value="__clear__" class="bg-[#1a120c]">× Fjern</option>
-              ${CATEGORIES.map(c => `<option value="${c}" class="bg-[#1a120c]">${cap(c)}</option>`).join('')}
+          <!-- Toolbar -->
+          <div class="toolbar">
+            <div class="search">
+              ${SVG_SEARCH}
+              <input id="rt-search" type="search" placeholder="Søk i oppskrifter og tags…" autocomplete="off" />
+            </div>
+            <div class="seg" id="rt-cat-seg">
+              <button class="on" data-cat="">Alle</button>
+              ${CATEGORIES.map(c => `<button data-cat="${esc(c)}">${cap(c)}</button>`).join('')}
+            </div>
+            <select class="sortsel" id="rt-sort">
+              <option value="updated_at">Sist endret</option>
+              <option value="title">Tittel A–Å</option>
+              <option value="created_at">Opprettet</option>
+              <option value="category">Kategori</option>
             </select>
-            <button id="rt-batch-cat-apply"
-              class="bg-accent hover:bg-accent/90 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-all shadow-sm active:scale-95">
-              Bruk
-            </button>
+            <button class="icon-btn" id="rt-compact-btn" title="Kompakt visning">${SVG_COMPACT}</button>
           </div>
 
-          <div class="flex items-center gap-2">
-            <span class="text-white/35 text-xs hidden sm:block">Legg til tag</span>
-            <input id="rt-batch-add-tag" type="text" placeholder="tag1, tag2…"
-              class="bg-white/10 border border-white/15 rounded-lg px-2.5 py-1.5 text-sm text-white/90 placeholder:text-white/25 outline-none focus:bg-white/15 w-32 sm:w-44 transition-colors" />
-            <button id="rt-batch-tag-apply"
-              class="bg-white/12 hover:bg-white/20 border border-white/15 text-white/80 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-              +
-            </button>
+          <!-- List header -->
+          <div class="list-head">
+            <span id="rt-select-all-cbx" class="cbx" role="checkbox" aria-checked="false" title="Velg alle"></span>
+            <span class="sortable" data-sort="title">Oppskrift</span>
+            <span class="h-cat sortable" data-sort="category">Kategori</span>
+            <span class="h-tags">Tags</span>
+            <span class="h-time">Tid</span>
+            <span class="h-edit sortable" data-sort="updated_at">Sist endret</span>
+            <span></span>
           </div>
 
-          <div id="rt-batch-remove-tags" class="flex items-center gap-1.5 flex-wrap"></div>
+          <!-- Rows -->
+          <div class="rows" id="rt-rows"></div>
 
-          <button id="rt-batch-close"
-            class="ml-auto text-white/35 hover:text-white/90 hover:bg-white/10 transition-all p-1.5 rounded-lg" title="Avbryt valg (Esc)">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
+          <!-- Empty state -->
+          <div class="empty" id="rt-empty" style="display:none">
+            <span class="serif">Ingen treff</span>
+            Prøv et annet søk eller filter.
+          </div>
         </div>
+
+        <!-- Batch bar -->
+        <div class="batchbar" id="rt-batchbar">
+          <span class="batch-count"><b id="rt-batch-count">0</b> valgt</span>
+          <button class="batch-clear" id="rt-batch-close">Fjern</button>
+          <div class="batch-actions">
+            <button class="batch-btn" id="rt-batch-cat-btn">${SVG_FOLDER} Kategori</button>
+            <button class="batch-btn" id="rt-batch-tag-btn">${SVG_TAG} Tags</button>
+            <button class="batch-btn danger" id="rt-batch-delete-btn">${SVG_TRASH} Slett</button>
+          </div>
+        </div>
+
+        <!-- Context menus (appended to body on demand) -->
       </div>
     `
     this._bindEvents()
-  }
-
-  _thHtml(col, label) {
-    const isActive = this.sortCol === col
-    const arrow = isActive ? (this.sortAsc ? ' ↑' : ' ↓') : ''
-    return `<th
-      class="px-4 py-3 text-[11px] font-semibold text-muted/70 uppercase tracking-wider cursor-pointer hover:text-brown select-none whitespace-nowrap text-left transition-colors"
-      data-sort="${col}">
-      ${label}<span class="opacity-60" id="sort-arrow-${col}">${arrow}</span>
-    </th>`
   }
 
   _bindEvents() {
@@ -213,16 +140,69 @@ export class RecipeTable {
     q('rt-new-btn').addEventListener('click', () => this.onNew())
     q('rt-paste-btn').addEventListener('click', () => this.onPaste())
 
-    // Theme toggle
     q('rt-theme-toggle').addEventListener('click', () => {
-      const dark = isDark()
-      const next = dark ? 'light' : 'dark'
+      const next = isDark() ? 'light' : 'dark'
       document.documentElement.setAttribute('data-theme', next)
       localStorage.setItem('theme', next)
       document.querySelectorAll('#rt-theme-toggle, #edit-theme-toggle').forEach(btn => {
         btn.textContent = themeIcon()
       })
     })
+
+    q('rt-search').addEventListener('input', e => {
+      this.filterText = e.target.value
+      this._refresh()
+    })
+
+    // Category segment
+    q('rt-cat-seg').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-cat]')
+      if (!btn) return
+      this.filterCategory = btn.dataset.cat
+      q('rt-cat-seg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn))
+      this._refresh()
+    })
+
+    q('rt-sort').addEventListener('change', e => {
+      this.sortCol = e.target.value
+      this.sortAsc = e.target.value === 'title'
+      this._refresh()
+    })
+
+    q('rt-compact-btn').addEventListener('click', () => {
+      this.compact = !this.compact
+      q('rt-compact-btn').classList.toggle('on', this.compact)
+      const rows = q('rt-rows')
+      if (rows) rows.classList.toggle('compact', this.compact)
+    })
+
+    // Select-all cbx
+    q('rt-select-all-cbx').addEventListener('click', () => {
+      const allSel = this.filtered.every(r => this.selected.has(r.id))
+      if (allSel) this.selected.clear()
+      else this.filtered.forEach(r => this.selected.add(r.id))
+      this._renderRows()
+      this._renderBatchBar()
+    })
+
+    // Batch bar actions
+    q('rt-batch-close').addEventListener('click', () => {
+      this.selected.clear()
+      this._renderRows()
+      this._renderBatchBar()
+    })
+
+    q('rt-batch-cat-btn').addEventListener('click', e => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      this._showCatPop(rect)
+    })
+
+    q('rt-batch-tag-btn').addEventListener('click', e => {
+      const rect = e.currentTarget.getBoundingClientRect()
+      this._showTagPop(rect)
+    })
+
+    q('rt-batch-delete-btn').addEventListener('click', () => this._batchDelete())
 
     // Esc clears selection
     document.addEventListener('keydown', e => {
@@ -233,58 +213,23 @@ export class RecipeTable {
       }
     })
 
-    q('rt-search').addEventListener('input', e => {
-      this.filterText = e.target.value
-      this._refresh()
-    })
-
-    q('rt-cat-filter').addEventListener('change', e => {
-      this.filterCategory = e.target.value
-      this._refresh()
-    })
-
-    q('rt-tag-filter-btn').addEventListener('click', e => {
-      e.stopPropagation()
-      q('rt-tag-dropdown').classList.toggle('hidden')
-    })
-    document.addEventListener('click', e => {
-      const wrap = q('rt-tag-filter-wrap')
-      if (wrap && !wrap.contains(e.target)) q('rt-tag-dropdown')?.classList.add('hidden')
-    })
-
-    q('rt-clear-filters').addEventListener('click', () => {
-      this.filterText = ''
-      this.filterCategory = ''
-      this.filterTags.clear()
-      q('rt-search').value = ''
-      q('rt-cat-filter').value = ''
-      this._renderTagDropdown()
-      this._refresh()
-    })
-
-    q('rt-select-all')?.addEventListener('change', e => {
-      if (e.target.checked) this.filtered.forEach(r => this.selected.add(r.id))
-      else this.selected.clear()
-      this._renderRows()
-      this._renderBatchBar()
-    })
-
-    this.container.querySelectorAll('[data-sort]').forEach(th => {
-      th.addEventListener('click', () => {
-        const col = th.dataset.sort
+    // Column sort
+    this.container.querySelectorAll('[data-sort]').forEach(el => {
+      el.addEventListener('click', () => {
+        const col = el.dataset.sort
         if (this.sortCol === col) this.sortAsc = !this.sortAsc
         else { this.sortCol = col; this.sortAsc = col === 'title' }
+        const sortEl = document.getElementById('rt-sort')
+        if (sortEl) sortEl.value = col
         this._refresh()
       })
     })
 
-    q('rt-batch-cat-apply').addEventListener('click', () => this._batchSetCategory())
-    q('rt-batch-tag-apply').addEventListener('click', () => this._batchAddTags())
-    q('rt-batch-add-tag').addEventListener('keydown', e => { if (e.key === 'Enter') this._batchAddTags() })
-    q('rt-batch-close').addEventListener('click', () => {
-      this.selected.clear()
-      this._renderRows()
-      this._renderBatchBar()
+    // Close popovers on outside click
+    document.addEventListener('mousedown', e => {
+      if (!e.target.closest('.pop')) {
+        document.querySelectorAll('.pop.rt-pop').forEach(p => p.remove())
+      }
     })
   }
 
@@ -292,7 +237,6 @@ export class RecipeTable {
     this.recipes = recipes
     this.allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort()
     this.selected.clear()
-    this._renderTagDropdown()
     this._refresh()
   }
 
@@ -300,14 +244,13 @@ export class RecipeTable {
     this._applyFilters()
     this._renderRows()
     this._renderBatchBar()
-    this._updateFilterUI()
   }
 
   _applyFilters() {
     const q = this.filterText.toLowerCase()
     this.filtered = this.recipes.filter(r => {
       if (this.filterCategory && r.category !== this.filterCategory) return false
-      if (q && !r.title.toLowerCase().includes(q)) return false
+      if (q && !r.title.toLowerCase().includes(q) && !(r.tags || []).some(t => t.toLowerCase().includes(q))) return false
       if (this.filterTags.size > 0) {
         const rt = new Set(r.tags || [])
         for (const t of this.filterTags) if (!rt.has(t)) return false
@@ -322,31 +265,29 @@ export class RecipeTable {
   }
 
   _renderRows() {
-    const tbody = this.container.querySelector('#rt-tbody')
-    const cards = this.container.querySelector('#rt-cards')
-    const tableCard = this.container.querySelector('#rt-table-card')
-    const countEl = this.container.querySelector('#rt-count')
+    const rowsEl = this.container.querySelector('#rt-rows')
     const emptyEl = this.container.querySelector('#rt-empty')
+    const countEl = this.container.querySelector('#rt-count')
+
+    if (!rowsEl) return
 
     const isEmpty = this.filtered.length === 0
-    if (emptyEl) emptyEl.classList.toggle('hidden', !isEmpty)
-    if (tableCard) tableCard.style.display = isEmpty ? 'none' : ''
-    if (cards) cards.style.display = isEmpty ? 'none' : ''
+    emptyEl.style.display = isEmpty ? '' : 'none'
 
-    if (tbody) tbody.innerHTML = this.filtered.map(r => this._rowHtml(r)).join('')
-    if (cards) cards.innerHTML = this.filtered.map(r => this._cardHtml(r)).join('')
+    rowsEl.innerHTML = isEmpty ? '' : this.filtered.map(r => this._rowHtml(r)).join('')
 
     if (countEl) {
       countEl.textContent = this.filtered.length === this.recipes.length
-        ? `${this.recipes.length}`
+        ? this.recipes.length
         : `${this.filtered.length} / ${this.recipes.length}`
     }
 
-    const selectAll = this.container.querySelector('#rt-select-all')
-    if (selectAll) {
+    // Update select-all cbx
+    const allCbx = this.container.querySelector('#rt-select-all-cbx')
+    if (allCbx) {
       const selCount = this.filtered.filter(r => this.selected.has(r.id)).length
-      selectAll.checked = selCount > 0 && selCount === this.filtered.length
-      selectAll.indeterminate = selCount > 0 && selCount < this.filtered.length
+      allCbx.classList.toggle('on', selCount > 0 && selCount === this.filtered.length)
+      allCbx.classList.toggle('mixed', selCount > 0 && selCount < this.filtered.length)
     }
 
     this._wireRowEvents()
@@ -354,254 +295,215 @@ export class RecipeTable {
 
   _rowHtml(r) {
     const sel = this.selected.has(r.id)
-    const catLabel = r.category ? cap(r.category) : ''
-    const tagPills = (r.tags || []).slice(0, 3).map(t =>
-      `<span class="inline-block bg-brown/[0.07] text-muted/80 rounded-md px-2 py-px text-[11px] whitespace-nowrap">${esc(t)}</span>`
-    ).join('')
-    const extra = (r.tags || []).length > 3
-      ? `<span class="text-muted/40 text-[11px]">+${r.tags.length - 3}</span>` : ''
+    const tags = (r.tags || [])
+    const tagHtml = tags.slice(0, 4).map(t => `<span class="tag">${esc(t)}</span>`).join('')
+    const moreHtml = tags.length > 4 ? `<span class="more">+${tags.length - 4}</span>` : ''
+    const timeMin = r.active_time ? `<b>${r.active_time}</b> min` : `<span class="text-muted">—</span>`
 
-    return `<tr
-      class="border-b border-brown-light/10 transition-colors cursor-pointer ${sel ? 'bg-accent/[0.05]' : 'hover:bg-brown/[0.02]'}"
-      data-row-id="${esc(r.id)}">
-      <td class="pl-5 pr-2 py-3.5" data-no-nav>
-        <input type="checkbox" class="rt-row-cb rounded border-brown-light/40 cursor-pointer accent-accent" data-id="${esc(r.id)}" ${sel ? 'checked' : ''} />
-      </td>
-      <td class="px-4 py-3.5 font-medium text-brown text-sm">${esc(r.title)}</td>
-      <td class="px-4 py-3.5">
-        ${catLabel
-          ? `<span class="inline-block bg-accent/[0.12] text-accent rounded-md px-2.5 py-0.5 text-[11px] font-semibold tracking-wide whitespace-nowrap">${esc(catLabel)}</span>`
-          : '<span class="text-brown-light/40 text-xs">—</span>'}
-      </td>
-      <td class="px-4 py-3.5">
-        <div class="flex flex-wrap gap-1">${tagPills}${extra}</div>
-      </td>
-      <td class="px-4 py-3.5 text-muted/70 text-xs whitespace-nowrap tabular-nums" title="${esc(fullTimestamp(r.updated_at))}">${relativeTime(r.updated_at)}</td>
-      <td class="px-4 py-3.5 text-muted/70 text-xs whitespace-nowrap tabular-nums" title="${esc(fullTimestamp(r.created_at))}">${relativeTime(r.created_at)}</td>
-      <td class="pr-5 py-3.5 text-right" data-no-nav>
-        <button
-          class="rt-edit-btn inline-flex items-center gap-1 text-muted/40 hover:text-accent hover:bg-accent/[0.08] px-2 py-1.5 rounded-lg transition-all text-xs font-medium"
-          data-id="${esc(r.id)}" title="Rediger">
-          ${PENCIL}
-        </button>
-      </td>
-    </tr>`
-  }
-
-  _cardHtml(r) {
-    const sel = this.selected.has(r.id)
-    const catLabel = r.category ? cap(r.category) : null
-    const tagPills = (r.tags || []).slice(0, 4).map(t =>
-      `<span class="inline-block bg-brown/[0.07] text-muted/80 rounded-md px-2 py-px text-[11px]">${esc(t)}</span>`
-    ).join('')
-    const extra = (r.tags || []).length > 4
-      ? `<span class="text-muted/40 text-[11px]">+${r.tags.length - 4}</span>` : ''
-
-    return `<div
-      class="flex items-start gap-3 px-5 py-4 transition-colors active:bg-brown/[0.025] ${sel ? 'bg-accent/[0.04]' : ''}"
-      data-row-id="${esc(r.id)}">
-      <div class="pt-0.5 shrink-0" data-no-nav>
-        <input type="checkbox" class="rt-row-cb rounded border-brown-light/40 cursor-pointer accent-accent" data-id="${esc(r.id)}" ${sel ? 'checked' : ''} />
+    return `<div class="rrow${sel ? ' sel' : ''}" data-row-id="${esc(r.id)}">
+      <span class="cbx${sel ? ' on' : ''}" data-cbx data-id="${esc(r.id)}" role="checkbox">${sel ? '<svg viewBox="0 0 13 13" fill="none" stroke="white" stroke-width="2.5"><path d="M2 6.5l3 3 6-6" stroke-linecap="round"/></svg>' : ''}</span>
+      <div class="rcell-main">
+        <div class="rtitle">${esc(r.title)}</div>
+        <div class="rdesc">${esc(r.description || '')}</div>
       </div>
-      <div class="flex-1 min-w-0">
-        <div class="font-medium text-brown text-sm leading-snug mb-1.5">${esc(r.title)}</div>
-        <div class="flex flex-wrap items-center gap-1">
-          ${catLabel ? `<span class="inline-block bg-accent/[0.12] text-accent rounded-md px-2 py-px text-[11px] font-semibold tracking-wide">${esc(catLabel)}</span>` : ''}
-          ${tagPills}${extra}
-        </div>
-        <div class="text-[11px] text-muted/50 mt-2">Oppdatert ${relativeTime(r.updated_at)}</div>
-      </div>
-      <button
-        class="rt-edit-btn shrink-0 text-muted/35 hover:text-accent hover:bg-accent/[0.08] p-2 rounded-lg transition-all -mr-1"
-        data-id="${esc(r.id)}" title="Rediger" data-no-nav>
-        ${PENCIL}
-      </button>
+      <div class="rcell-cat">${r.category ? `<span class="cat-badge">${esc(cap(r.category))}</span>` : ''}</div>
+      <div class="rcell-tags rtags">${tagHtml}${moreHtml}</div>
+      <div class="rcell-time rmeta">${timeMin}</div>
+      <div class="rcell-edit rmeta">${relativeTime(r.updated_at)}</div>
+      <button class="row-menu-btn" data-menu data-id="${esc(r.id)}" title="Handlinger">${SVG_DOTS}</button>
     </div>`
   }
 
   _wireRowEvents() {
     this.container.querySelectorAll('[data-row-id]').forEach(row => {
       row.addEventListener('click', e => {
-        if (e.target.closest('[data-no-nav]')) return
+        if (e.target.closest('[data-cbx]') || e.target.closest('[data-menu]')) return
         const id = row.dataset.rowId
-        // In selection mode: clicking a row toggles its checkbox
         if (this.selected.size > 0) {
-          if (this.selected.has(id)) this.selected.delete(id)
-          else this.selected.add(id)
-          const cb = this.container.querySelector(`.rt-row-cb[data-id="${CSS.escape(id)}"]`)
-          if (cb) cb.checked = this.selected.has(id)
-          if (row.tagName === 'TR') row.classList.toggle('bg-accent/[0.05]', this.selected.has(id))
-          else row.classList.toggle('bg-accent/[0.04]', this.selected.has(id))
-          if (row.tagName === 'TR') row.classList.toggle('hover:bg-brown/[0.02]', !this.selected.has(id))
-          this._updateSelectAll()
-          this._renderBatchBar()
+          this._toggleSel(id, row)
           return
         }
         this.onEdit(id)
       })
     })
 
-    this.container.querySelectorAll('.rt-row-cb').forEach(cb => {
-      cb.addEventListener('change', e => {
+    this.container.querySelectorAll('[data-cbx]').forEach(cbx => {
+      cbx.addEventListener('click', e => {
         e.stopPropagation()
-        const id = cb.dataset.id
-        if (cb.checked) this.selected.add(id)
-        else this.selected.delete(id)
-        this.container.querySelectorAll(`[data-row-id="${id}"]`).forEach(row => {
-          if (row.tagName === 'TR') {
-            row.classList.toggle('bg-accent/[0.05]', cb.checked)
-            row.classList.toggle('hover:bg-brown/[0.02]', !cb.checked)
-          } else {
-            row.classList.toggle('bg-accent/[0.04]', cb.checked)
-          }
-        })
-        this._updateSelectAll()
-        this._renderBatchBar()
+        const id = cbx.dataset.id
+        const row = cbx.closest('[data-row-id]')
+        this._toggleSel(id, row)
       })
     })
 
-    this.container.querySelectorAll('.rt-edit-btn').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); this.onEdit(btn.dataset.id) })
+    this.container.querySelectorAll('[data-menu]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation()
+        const id = btn.dataset.id
+        const rect = btn.getBoundingClientRect()
+        this._showRowMenu(id, rect)
+      })
     })
   }
 
-  _updateSelectAll() {
-    const selectAll = this.container.querySelector('#rt-select-all')
-    if (!selectAll) return
-    const selCount = this.filtered.filter(r => this.selected.has(r.id)).length
-    selectAll.checked = selCount > 0 && selCount === this.filtered.length
-    selectAll.indeterminate = selCount > 0 && selCount < this.filtered.length
+  _toggleSel(id, row) {
+    if (this.selected.has(id)) this.selected.delete(id)
+    else this.selected.add(id)
+    if (row) {
+      row.classList.toggle('sel', this.selected.has(id))
+      const cbx = row.querySelector('[data-cbx]')
+      if (cbx) {
+        cbx.classList.toggle('on', this.selected.has(id))
+        cbx.innerHTML = this.selected.has(id)
+          ? '<svg viewBox="0 0 13 13" fill="none" stroke="white" stroke-width="2.5"><path d="M2 6.5l3 3 6-6" stroke-linecap="round"/></svg>'
+          : ''
+      }
+    }
+    this._renderBatchBar()
+    // Update select-all
+    const allCbx = this.container.querySelector('#rt-select-all-cbx')
+    if (allCbx) {
+      const selCount = this.filtered.filter(r => this.selected.has(r.id)).length
+      allCbx.classList.toggle('on', selCount > 0 && selCount === this.filtered.length)
+      allCbx.classList.toggle('mixed', selCount > 0 && selCount < this.filtered.length)
+    }
   }
 
   _renderBatchBar() {
-    const bar = this.container.querySelector('#rt-batch-bar')
+    const bar = this.container.querySelector('#rt-batchbar')
     const countEl = this.container.querySelector('#rt-batch-count')
-    const removeTagsEl = this.container.querySelector('#rt-batch-remove-tags')
     if (!bar) return
-
     const count = this.selected.size
-    if (count === 0) { bar.classList.add('hidden'); return }
-    bar.classList.remove('hidden')
-    if (countEl) countEl.textContent = count === 1 ? '1 valgt' : `${count} valgt`
-
-    if (removeTagsEl) {
-      const selectedTags = [...new Set(
-        [...this.selected].flatMap(id => {
-          const r = this.recipes.find(r => r.id === id)
-          return r?.tags || []
-        })
-      )].sort()
-
-      if (selectedTags.length) {
-        removeTagsEl.innerHTML =
-          `<span class="text-white/35 text-xs hidden sm:block shrink-0">Fjern:</span>` +
-          selectedTags.map(t =>
-            `<button class="rt-remove-tag-btn flex items-center gap-1 bg-white/10 hover:bg-red-900/40 border border-white/15 text-white/70 hover:text-white text-xs px-2 py-1 rounded-full transition-colors" data-tag="${esc(t)}">
-              ${esc(t)} <span class="opacity-40">×</span>
-            </button>`
-          ).join('')
-        removeTagsEl.querySelectorAll('.rt-remove-tag-btn').forEach(btn => {
-          btn.addEventListener('click', () => this._batchRemoveTag(btn.dataset.tag))
-        })
-      } else {
-        removeTagsEl.innerHTML = ''
-      }
-    }
+    bar.classList.toggle('show', count > 0)
+    if (countEl) countEl.textContent = count
   }
 
-  _renderTagDropdown() {
-    const list = this.container.querySelector('#rt-tag-list')
-    if (!list) return
+  _showRowMenu(id, rect) {
+    document.querySelectorAll('.pop.rt-pop').forEach(p => p.remove())
+    const pop = document.createElement('div')
+    pop.className = 'pop rt-pop'
+    pop.style.cssText = `position:fixed;left:${rect.right - 190}px;top:${rect.bottom + 6}px;`
+    pop.innerHTML = `
+      <button data-action="edit">${SVG_PENCIL} Rediger</button>
+      <div class="pop-sep"></div>
+      <button data-action="delete" class="danger">${SVG_TRASH} Slett</button>
+    `
+    document.body.appendChild(pop)
+    pop.querySelector('[data-action="edit"]').addEventListener('click', () => { pop.remove(); this.onEdit(id) })
+    pop.querySelector('[data-action="delete"]').addEventListener('click', () => { pop.remove(); this._deleteOne(id) })
+  }
 
-    if (this.allTags.length === 0) {
-      list.innerHTML = '<p class="text-muted text-sm px-2 py-1.5">Ingen tagger</p>'
-    } else {
-      list.innerHTML = this.allTags.map(tag => {
-        const checked = this.filterTags.has(tag)
-        return `<label class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-cream cursor-pointer transition-colors">
-          <input type="checkbox" class="rt-tag-cb rounded border-brown-light/50 accent-accent shrink-0" data-tag="${esc(tag)}" ${checked ? 'checked' : ''} />
-          <span class="text-sm text-text">${esc(tag)}</span>
-        </label>`
-      }).join('')
-
-      list.querySelectorAll('.rt-tag-cb').forEach(cb => {
-        cb.addEventListener('change', () => {
-          if (cb.checked) this.filterTags.add(cb.dataset.tag)
-          else this.filterTags.delete(cb.dataset.tag)
-          this._updateTagCount()
-          this._refresh()
-        })
+  _showCatPop(rect) {
+    document.querySelectorAll('.pop.rt-pop').forEach(p => p.remove())
+    const pop = document.createElement('div')
+    pop.className = 'pop rt-pop'
+    pop.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;transform:translateY(-100%) translateY(-6px);`
+    pop.innerHTML = `
+      <div class="pop-label">Sett kategori til</div>
+      ${CATEGORIES.map(c => `<button data-cat="${esc(c)}">${SVG_FOLDER} ${cap(c)}</button>`).join('')}
+      <div class="pop-sep"></div>
+      <button data-cat="">Fjern kategori</button>
+    `
+    document.body.appendChild(pop)
+    pop.querySelectorAll('[data-cat]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        pop.remove()
+        this._batchSetCategory(btn.dataset.cat || null)
       })
-    }
-
-    this._updateTagCount()
-  }
-
-  _updateTagCount() {
-    const countEl = this.container.querySelector('#rt-tag-count')
-    if (!countEl) return
-    const n = this.filterTags.size
-    if (n > 0) { countEl.textContent = n; countEl.classList.remove('hidden') }
-    else countEl.classList.add('hidden')
-  }
-
-  _updateFilterUI() {
-    const clearBtn = this.container.querySelector('#rt-clear-filters')
-    const hasFilters = this.filterText || this.filterCategory || this.filterTags.size > 0
-    if (clearBtn) clearBtn.classList.toggle('hidden', !hasFilters)
-
-    ;['title', 'category', 'updated_at', 'created_at'].forEach(col => {
-      const el = this.container.querySelector(`#sort-arrow-${col}`)
-      if (!el) return
-      if (col === this.sortCol) el.textContent = this.sortAsc ? ' ↑' : ' ↓'
-      else el.textContent = ''
     })
   }
 
-  async _batchSetCategory() {
-    const sel = this.container.querySelector('#rt-batch-cat')
-    if (!sel || !sel.value) return
-    const category = sel.value === '__clear__' ? null : sel.value
+  _showTagPop(rect) {
+    document.querySelectorAll('.pop.rt-pop').forEach(p => p.remove())
+    const pop = document.createElement('div')
+    pop.className = 'pop rt-pop'
+    pop.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;transform:translateY(-100%) translateY(-6px);min-width:220px;`
+    const selectedTags = [...new Set([...this.selected].flatMap(id => {
+      const r = this.recipes.find(r => r.id === id); return r?.tags || []
+    }))].sort()
+    pop.innerHTML = `
+      <div class="pop-label">Legg til tag</div>
+      <div style="padding:4px 8px 8px;display:flex;gap:6px;">
+        <input id="rt-pop-tag-input" type="text" placeholder="tag1, tag2…" style="flex:1;padding:7px 10px;border:1px solid var(--brown-light);border-radius:8px;background:var(--cream);color:var(--text);font-family:inherit;font-size:0.85rem;outline:none;" />
+        <button id="rt-pop-tag-add" style="padding:7px 12px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:0.85rem;font-weight:500;">+</button>
+      </div>
+      ${selectedTags.length ? `<div class="pop-label">Fjern fra valgte</div>` + selectedTags.map(t => `<button data-remove-tag="${esc(t)}">${SVG_TRASH} ${esc(t)}</button>`).join('') : ''}
+    `
+    document.body.appendChild(pop)
+    const addBtn = pop.querySelector('#rt-pop-tag-add')
+    const inp = pop.querySelector('#rt-pop-tag-input')
+    const doAdd = () => {
+      const tags = inp.value.split(',').map(t => t.trim()).filter(Boolean)
+      if (tags.length) { pop.remove(); this._batchAddTags(tags) }
+    }
+    addBtn.addEventListener('click', doAdd)
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd() })
+    pop.querySelectorAll('[data-remove-tag]').forEach(btn => {
+      btn.addEventListener('click', () => { pop.remove(); this._batchRemoveTag(btn.dataset.removeTag) })
+    })
+  }
+
+  async _deleteOne(id) {
+    if (!confirm(`Slette «${id}»?`)) return
+    const res = await fetch(`/api/recipes/${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      this.recipes = this.recipes.filter(r => r.id !== id)
+      this.selected.delete(id)
+      this.allTags = [...new Set(this.recipes.flatMap(r => r.tags || []))].sort()
+      this._refresh()
+    }
+  }
+
+  async _batchDelete() {
     const ids = [...this.selected]
+    if (!ids.length) return
+    if (!confirm(`Slette ${ids.length} oppskrift${ids.length !== 1 ? 'er' : ''}?`)) return
+    for (const id of ids) {
+      await fetch(`/api/recipes/${id}`, { method: 'DELETE' })
+    }
+    this.recipes = this.recipes.filter(r => !ids.includes(r.id))
+    ids.forEach(id => this.selected.delete(id))
+    this.allTags = [...new Set(this.recipes.flatMap(r => r.tags || []))].sort()
+    this._refresh()
+  }
+
+  async _batchSetCategory(category) {
+    const ids = [...this.selected]
+    if (!ids.length) return
     const res = await fetch('/api/admin/batch-update', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, updates: { category } }),
     })
     if (res.ok) {
-      sel.value = ''
       ids.forEach(id => { const r = this.recipes.find(r => r.id === id); if (r) r.category = category })
       this.selected.clear()
       this._refresh()
     }
   }
 
-  async _batchAddTags() {
-    const input = this.container.querySelector('#rt-batch-add-tag')
-    if (!input) return
-    const addTags = input.value.split(',').map(t => t.trim()).filter(Boolean)
-    if (!addTags.length) return
+  async _batchAddTags(addTags) {
     const ids = [...this.selected]
+    if (!ids.length || !addTags?.length) return
     const res = await fetch('/api/admin/batch-update', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, updates: { addTags } }),
     })
     if (res.ok) {
-      input.value = ''
       ids.forEach(id => {
         const r = this.recipes.find(r => r.id === id)
         if (r) r.tags = [...new Set([...(r.tags || []), ...addTags])]
       })
       this.allTags = [...new Set(this.recipes.flatMap(r => r.tags || []))].sort()
       this.selected.clear()
-      this._renderTagDropdown()
       this._refresh()
     }
   }
 
   async _batchRemoveTag(tag) {
     const ids = [...this.selected]
+    if (!ids.length) return
     const res = await fetch('/api/admin/batch-update', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -614,7 +516,6 @@ export class RecipeTable {
       })
       this.allTags = [...new Set(this.recipes.flatMap(r => r.tags || []))].sort()
       this.selected.clear()
-      this._renderTagDropdown()
       this._refresh()
     }
   }

@@ -34,25 +34,22 @@ export class IngredientSidebar {
 
   render() {
     this._container.innerHTML = `
-      <div class="ing-sidebar-sticky">
-        <div class="section-head" style="margin-top:0">
+      <div class="ing-sidebar">
+        <div class="ing-sidebar-title">
           <span>Ingredienser</span>
         </div>
-        <div class="ing-sidebar-panel">
-          <ul class="ing-sidebar-list" id="ing-sidebar-list"></ul>
-        </div>
+        <ul></ul>
       </div>
     `
-    const ul = this._container.querySelector('#ing-sidebar-list')
+    const ul = this._container.querySelector('ul')
     this._ingredients.forEach(ing => {
       const li = document.createElement('li')
-      li.className = 'ing-sidebar-item'
       li.dataset.ingId = ing.id
       li.innerHTML = `
-        <span class="ing-sidebar-name">${esc(ing.name)}</span>
-        <span class="ing-total">${ing.amount != null ? `${ing.amount} ${ing.unit || ''}` : '—'}</span>
-        <span class="ing-remaining" data-rem-id="${esc(ing.id)}"></span>
-        <span class="ing-sum-badge" data-sum-id="${esc(ing.id)}">—</span>
+        <span class="isb-name">${esc(ing.name)}</span>
+        <span class="isb-amt">${ing.amount != null ? `${ing.amount} ${ing.unit || ''}` : '—'}</span>
+        <span class="isb-rest" data-rem-id="${esc(ing.id)}"></span>
+        <span class="isb-badge" data-sum-id="${esc(ing.id)}">—</span>
       `
       makeDraggable(li, ing.id)
       li.addEventListener('click', () => this._opts.onInsert?.(ing.id))
@@ -70,13 +67,13 @@ export class IngredientSidebar {
       const sum = this._sums[ing.id] ?? 0
       if (sum === 0) {
         badge.textContent = '—'
-        badge.className = 'ing-sum-badge sum-grey'
+        badge.className = 'isb-badge sum-grey'
         if (remEl) remEl.textContent = ''
       } else {
         const display = sum.toFixed(2).replace(/\.?0+$/, '')
         badge.textContent = `Σ ${display}`
         const diff = Math.abs(sum - 1.0)
-        badge.className = 'ing-sum-badge ' + (diff <= 0.02 ? 'sum-green' : 'sum-orange')
+        badge.className = 'isb-badge ' + (diff <= 0.02 ? 'sum-green' : 'sum-orange')
         if (remEl && ing.amount != null) {
           const rem = ing.amount * (1 - sum)
           const remDisplay = parseFloat(rem.toFixed(4))

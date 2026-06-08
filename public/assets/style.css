@@ -13,33 +13,33 @@
   --text-muted: #7a6555;
 }
 
-/* Kald Stål — cool slate-black, steel blue accent, teal green */
+/* Kveld — soft graphite, muted terracotta */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --cream:       #0d1117;
-    --warm-white:  #161c27;
-    --brown:       #e8edf5;
-    --brown-mid:   #7b90a8;
-    --brown-light: #253047;
-    --accent:      #5294d4;
-    --accent-light:#74aee0;
-    --green:       #3a9e7c;
-    --text:        #b8c6d8;
-    --text-muted:  #566880;
+    --cream:       #16161a;
+    --warm-white:  #1f2025;
+    --brown:       #ece9e2;
+    --brown-mid:   #a39e95;
+    --brown-light: #33343b;
+    --accent:      #d98c5f;
+    --accent-light:#ecab84;
+    --green:       #7fa178;
+    --text:        #dcd8cf;
+    --text-muted:  #8d8a84;
   }
 }
 
 [data-theme="dark"] {
-  --cream:       #0d1117;
-  --warm-white:  #161c27;
-  --brown:       #e8edf5;
-  --brown-mid:   #7b90a8;
-  --brown-light: #253047;
-  --accent:      #5294d4;
-  --accent-light:#74aee0;
-  --green:       #3a9e7c;
-  --text:        #b8c6d8;
-  --text-muted:  #566880;
+  --cream:       #16161a;
+  --warm-white:  #1f2025;
+  --brown:       #ece9e2;
+  --brown-mid:   #a39e95;
+  --brown-light: #33343b;
+  --accent:      #d98c5f;
+  --accent-light:#ecab84;
+  --green:       #7fa178;
+  --text:        #dcd8cf;
+  --text-muted:  #8d8a84;
 }
 
 body {
@@ -905,16 +905,16 @@ footer {
   .nav-inner { gap: 16px; }
 }
 
-/* Dark mode shadow overrides — replace warm rgba with cool slate */
+/* Dark mode shadow overrides — Kveld warm-dark shadows */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    .step:hover  { box-shadow: 0 4px 20px rgba(10,20,50,0.35); }
-    .step.active { box-shadow: 0 4px 24px rgba(82,148,212,0.18); }
-    .recipe-card:hover { box-shadow: 0 6px 28px rgba(10,20,50,0.45); }
+    .step:hover  { box-shadow: 0 4px 20px rgba(0,0,0,0.40); }
+    .step.active { box-shadow: 0 4px 24px rgba(217,140,95,0.15); }
+    .recipe-card:hover { box-shadow: 0 6px 28px rgba(0,0,0,0.50); }
   }
 }
 [data-theme="dark"] {
-  .step:hover  { box-shadow: 0 4px 20px rgba(10,20,50,0.35); }
-  .step.active { box-shadow: 0 4px 24px rgba(82,148,212,0.18); }
-  .recipe-card:hover { box-shadow: 0 6px 28px rgba(10,20,50,0.45); }
+  .step:hover  { box-shadow: 0 4px 20px rgba(0,0,0,0.40); }
+  .step.active { box-shadow: 0 4px 24px rgba(217,140,95,0.15); }
+  .recipe-card:hover { box-shadow: 0 6px 28px rgba(0,0,0,0.50); }
 }
