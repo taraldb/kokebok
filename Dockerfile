@@ -12,6 +12,7 @@ RUN npm ci
 
 # Build admin frontend
 COPY admin/ ./admin/
+COPY public/assets/recipe-shared.css ./public/assets/recipe-shared.css
 RUN npm run build:admin
 
 # Prune to production deps
