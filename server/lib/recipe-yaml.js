@@ -15,6 +15,7 @@ function recipeToYaml(r) {
     ...(r.label ? { label: r.label } : {}),
     ...(r.description ? { description: r.description } : {}),
     ...(r.category ? { category: r.category } : {}),
+    ...(r.active_time != null ? { active_time: r.active_time } : {}),
     tags: r.tags || [],
     meta: (r.meta || []).map(m => ({ label: m.label, value: m.value })),
     servings: {
@@ -73,6 +74,7 @@ function yamlToRecipe(yamlStr) {
     description: obj.description ?? null,
     category: obj.category ?? null,
     tags: obj.tags || [],
+    active_time: obj.active_time ?? null,
     meta: obj.meta || [],
     servings_base: srv.base ?? null,
     servings_unit: srv.unit ?? null,

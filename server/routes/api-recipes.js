@@ -32,6 +32,7 @@ const RecipeBodySchema = z.object({
   category: z.string().nullable().optional(),
   tags: z.array(z.string()).default([]),
   meta: z.array(z.object({}).passthrough()).default([]),
+  active_time: z.number().int().nullable().optional(),
   servings_base: z.number().int().nullable().optional(),
   servings_unit: z.string().nullable().optional(),
   servings_step: z.number().int().default(1),

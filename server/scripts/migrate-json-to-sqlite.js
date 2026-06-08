@@ -50,6 +50,19 @@ function convertRecipe(json) {
   });
 
   const servings = json.servings || {};
+
+  // Extract active_time: prefer explicit field, else pull from "Aktiv tid" meta entry
+  let active_time = json.active_time ?? null;
+  let metaArr = json.meta || [];
+  if (active_time == null) {
+    const idx = metaArr.findIndex(m => m.label?.toLowerCase() === 'aktiv tid');
+    if (idx !== -1) {
+      const numMatch = String(metaArr[idx].value ?? '').match(/\d+/);
+      active_time = numMatch ? parseInt(numMatch[0], 10) : null;
+      metaArr = metaArr.filter((_, i) => i !== idx);
+    }
+  }
+
   const recipe = {
     id: json.id,
     title: json.title || '',
@@ -57,7 +70,8 @@ function convertRecipe(json) {
     description: json.description || null,
     category: json.category || null,
     tags: json.tags || [],
-    meta: json.meta || [],
+    active_time,
+    meta: metaArr,
     servings_base: servings.base ?? null,
     servings_unit: servings.unit ?? null,
     servings_step: servings.step ?? 1,

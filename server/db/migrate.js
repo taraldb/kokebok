@@ -8,6 +8,7 @@ function migrate() {
   db.exec(sql);
   migrateIngredientsCompositePk(db);
   migrateIngredientsAddDescription(db);
+  migrateActiveTime(db);
 }
 
 function migrateIngredientsAddDescription(db) {
@@ -41,6 +42,31 @@ function migrateIngredientsCompositePk(db) {
     `);
   })();
   console.log('Migrated ingredients table to composite primary key (recipe_id, id)');
+}
+
+function migrateActiveTime(db) {
+  const cols = db.prepare(`PRAGMA table_info(recipes)`).all();
+  if (!cols.some(c => c.name === 'active_time')) {
+    db.exec(`ALTER TABLE recipes ADD COLUMN active_time INTEGER`);
+    console.log('Added active_time column to recipes');
+  }
+  // Move "Aktiv tid" meta entries into the dedicated column for existing rows
+  const rows = db.prepare(`SELECT id, meta, active_time FROM recipes`).all();
+  const updateStmt = db.prepare(`UPDATE recipes SET active_time = ?, meta = ? WHERE id = ?`);
+  let migrated = 0;
+  for (const row of rows) {
+    if (row.active_time != null) continue;
+    const meta = JSON.parse(row.meta || '[]');
+    const idx = meta.findIndex(m => m.label?.toLowerCase() === 'aktiv tid');
+    if (idx === -1) continue;
+    const numMatch = String(meta[idx].value ?? '').match(/\d+/);
+    const activeTime = numMatch ? parseInt(numMatch[0], 10) : null;
+    if (!activeTime) continue;
+    meta.splice(idx, 1);
+    updateStmt.run(activeTime, JSON.stringify(meta), row.id);
+    migrated++;
+  }
+  if (migrated > 0) console.log(`Migrated active_time for ${migrated} recipes`);
 }
 
 module.exports = { migrate };

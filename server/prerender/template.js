@@ -31,11 +31,15 @@ function renderRecipePage(r) {
     ...(r.tags || []).map(t => `<span class="tag">${esc(t)}</span>`),
   ].join('');
 
-  const metaItems = (r.meta || []).map(m => `
-      <div class="meta-item">
-        <span class="meta-label">${esc(m.label)}</span>
-        <span class="meta-value">${esc(m.value)}</span>
-      </div>`).join('');
+  const metaItems = [
+    r.active_time != null
+      ? `\n      <div class="meta-item">\n        <span class="meta-label">Aktiv tid</span>\n        <span class="meta-value">~${r.active_time} min</span>\n      </div>`
+      : '',
+    ...(r.meta || []).map(m => {
+      const val = esc([m.value, m.unit].filter(Boolean).join(' '));
+      return `\n      <div class="meta-item">\n        <span class="meta-label">${esc(m.label)}</span>\n        <span class="meta-value">${val}</span>\n      </div>`;
+    }),
+  ].filter(Boolean).join('');
 
   const servingsControl = r.servings_base != null ? `
           <div class="meta-item">

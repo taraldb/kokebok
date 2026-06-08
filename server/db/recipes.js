@@ -17,7 +17,7 @@ function parseRecipeRow(row) {
 function listRecipes() {
   const db = getDb();
   return db.prepare(
-    `SELECT id, title, description, category, tags, created_at, updated_at FROM recipes ORDER BY title COLLATE NOCASE`
+    `SELECT id, title, description, category, tags, active_time, created_at, updated_at FROM recipes ORDER BY title COLLATE NOCASE`
   ).all().map(r => ({ ...r, tags: JSON.parse(r.tags) }));
 }
 
@@ -88,11 +88,12 @@ function upsertRecipe(r) {
     const created_at = existing ? db.prepare(`SELECT created_at FROM recipes WHERE id = ?`).get(r.id).created_at : now;
 
     db.prepare(`
-      INSERT INTO recipes (id,title,label,description,category,tags,meta,servings_base,servings_unit,servings_step,servings_min,tips,created_at,updated_at)
-      VALUES (@id,@title,@label,@description,@category,@tags,@meta,@servings_base,@servings_unit,@servings_step,@servings_min,@tips,@created_at,@updated_at)
+      INSERT INTO recipes (id,title,label,description,category,tags,meta,active_time,servings_base,servings_unit,servings_step,servings_min,tips,created_at,updated_at)
+      VALUES (@id,@title,@label,@description,@category,@tags,@meta,@active_time,@servings_base,@servings_unit,@servings_step,@servings_min,@tips,@created_at,@updated_at)
       ON CONFLICT(id) DO UPDATE SET
         title=excluded.title, label=excluded.label, description=excluded.description,
         category=excluded.category, tags=excluded.tags, meta=excluded.meta,
+        active_time=excluded.active_time,
         servings_base=excluded.servings_base, servings_unit=excluded.servings_unit,
         servings_step=excluded.servings_step, servings_min=excluded.servings_min,
         tips=excluded.tips, updated_at=excluded.updated_at
@@ -101,6 +102,7 @@ function upsertRecipe(r) {
       tags: JSON.stringify(r.tags ?? []),
       meta: JSON.stringify(r.meta ?? []),
       tips: JSON.stringify(r.tips ?? []),
+      active_time: r.active_time ?? null,
       created_at,
       updated_at: now,
     });

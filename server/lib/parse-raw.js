@@ -56,6 +56,19 @@ function normalizeJsonRecipe(json) {
   }));
 
   const srv = json.servings || {};
+
+  // Extract active_time: prefer explicit field, else pull from "Aktiv tid" meta entry
+  let active_time = json.active_time ?? null;
+  let meta = json.meta || [];
+  if (active_time == null) {
+    const idx = meta.findIndex(m => m.label?.toLowerCase() === 'aktiv tid');
+    if (idx !== -1) {
+      const numMatch = String(meta[idx].value ?? '').match(/\d+/);
+      active_time = numMatch ? parseInt(numMatch[0], 10) : null;
+      meta = meta.filter((_, i) => i !== idx);
+    }
+  }
+
   return {
     id: json.id,
     title: json.title || '',
@@ -63,7 +76,8 @@ function normalizeJsonRecipe(json) {
     description: json.description ?? null,
     category: json.category ?? null,
     tags: json.tags || [],
-    meta: json.meta || [],
+    active_time,
+    meta,
     servings_base: srv.base ?? json.servings_base ?? null,
     servings_unit: srv.unit ?? json.servings_unit ?? null,
     servings_step: srv.step ?? json.servings_step ?? 1,

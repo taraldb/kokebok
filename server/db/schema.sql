@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS recipes (
   label TEXT, description TEXT, category TEXT,
   tags TEXT NOT NULL DEFAULT '[]',
   meta TEXT NOT NULL DEFAULT '[]',
+  active_time INTEGER,
   servings_base INTEGER, servings_unit TEXT,
   servings_step INTEGER NOT NULL DEFAULT 1,
   servings_min  INTEGER NOT NULL DEFAULT 1,

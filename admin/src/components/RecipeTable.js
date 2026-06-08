@@ -42,7 +42,7 @@ export class RecipeTable {
     this.filterCategory = ''
     this.filterTags = new Set()
     this.allTags = []
-    this.compact = false
+    this.compact = localStorage.getItem('adminCompact') === '1'
 
     this._mount()
   }
@@ -92,6 +92,7 @@ export class RecipeTable {
               <option value="title">Tittel A–Å</option>
               <option value="created_at">Opprettet</option>
               <option value="category">Kategori</option>
+              <option value="active_time">Aktiv tid</option>
             </select>
             <button class="icon-btn" id="rt-compact-btn" title="Kompakt visning">${SVG_COMPACT}</button>
           </div>
@@ -102,7 +103,7 @@ export class RecipeTable {
             <span class="sortable" data-sort="title">Oppskrift</span>
             <span class="h-cat sortable" data-sort="category">Kategori</span>
             <span class="h-tags">Tags</span>
-            <span class="h-time">Tid</span>
+            <span class="h-time sortable" data-sort="active_time">Tid</span>
             <span class="h-edit sortable" data-sort="updated_at">Sist endret</span>
             <span></span>
           </div>
@@ -132,6 +133,9 @@ export class RecipeTable {
       </div>
     `
     this._bindEvents()
+    if (this.compact) {
+      this.container.querySelector('#rt-compact-btn')?.classList.add('on')
+    }
   }
 
   _bindEvents() {
@@ -171,6 +175,7 @@ export class RecipeTable {
 
     q('rt-compact-btn').addEventListener('click', () => {
       this.compact = !this.compact
+      localStorage.setItem('adminCompact', this.compact ? '1' : '0')
       q('rt-compact-btn').classList.toggle('on', this.compact)
       const rows = q('rt-rows')
       if (rows) rows.classList.toggle('compact', this.compact)
@@ -270,6 +275,7 @@ export class RecipeTable {
     const countEl = this.container.querySelector('#rt-count')
 
     if (!rowsEl) return
+    rowsEl.classList.toggle('compact', this.compact)
 
     const isEmpty = this.filtered.length === 0
     emptyEl.style.display = isEmpty ? '' : 'none'

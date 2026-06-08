@@ -34,13 +34,14 @@ label: "Kategori · Nøkkelord"          # optional
 description: "1–2 setninger om retten."
 category: middag           # frokost|middag|dessert|tilbehør|snacks
 tags: [tag1, tag2]         # lowercase Norwegian nouns
-meta:
-  - label: "Aktiv tid"
-    value: "~30 min"
+active_time: 30            # minutes of hands-on time (integer, required)
+meta:                      # other time/info rows (NOT aktiv tid — use active_time above)
   - label: "Steketid"
-    value: "20 min"
-  - label: "Porsjoner"
-    value: "4"
+    value: "20"
+    unit: "min"
+  - label: "Hevetid"
+    value: "8–12"
+    unit: "timer"
 servings:
   base: 4
   unit: porsjoner
@@ -82,6 +83,9 @@ Step `content` is plain text with optional inline formatting:
 
 - `id` must be unique; derive from the title (lowercase, Norwegian chars → ae/o/a, spaces → hyphens)
 - Ingredient `id`s follow the same slugify logic as recipe IDs
+- `active_time` is required: integer minutes of hands-on cooking time (e.g. 30 for ~30 min)
+- Do NOT put "Aktiv tid" in `meta` — use the dedicated `active_time` field instead
+- `meta` rows use `{label, value, unit}` — keep `value` as a number/range and `unit` as the unit string (e.g. value: "22–24", unit: "min")
 - `timer_seconds`: 0 for steps with no timer, otherwise seconds (e.g. 20 min = 1200)
 - All user-facing strings in Norwegian
 - Omit optional fields (`label`, `description`, `meta`, `tips`) if not applicable — do not include them with empty values

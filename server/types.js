@@ -28,6 +28,7 @@
  * @property {string|null} category
  * @property {string[]} tags
  * @property {Array} meta
+ * @property {number|null} active_time
  * @property {number|null} servings_base
  * @property {string|null} servings_unit
  * @property {number} servings_step
