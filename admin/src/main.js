@@ -278,7 +278,7 @@ function renderForm(r) {
         <div class="preview-frame">
           <div class="preview-chrome">
             <div class="dots"><i></i><i></i><i></i></div>
-            <span class="url" id="preview-url">kokebok.bergee.net/r/…</span>
+            <span class="url" id="preview-url">${location.host}/r/…</span>
             <span class="preview-label">Forhåndsvisning</span>
             <button class="icon-btn preview-toggle" id="preview-toggle" title="Skjul forhåndsvisning">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -865,7 +865,7 @@ function updatePreview() {
   const ings = getCurrentIngredients()
   const ingMap = new Map(ings.map(i => [i.id, i]))
 
-  if (urlEl) urlEl.textContent = id ? `kokebok.bergee.net/r/${id}` : 'kokebok.bergee.net/r/…'
+  if (urlEl) urlEl.textContent = id ? `${location.host}/r/${id}` : `${location.host}/r/…`
 
   if (!title) {
     body.innerHTML = `<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:40px 0;">Fyll inn skjema for å se forhåndsvisning</div>`
