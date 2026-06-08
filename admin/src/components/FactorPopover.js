@@ -1,10 +1,10 @@
 const PRESETS = [
+  { label: '¼',  value: 0.25  },
+  { label: '⅓',  value: 0.333 },
   { label: '½',  value: 0.5   },
   { label: '⅔',  value: 0.667 },
+  { label: '¾',  value: 0.75  },
   { label: '1',  value: 1     },
-  { label: '1½', value: 1.5   },
-  { label: '2',  value: 2     },
-  { label: '3',  value: 3     },
 ]
 
 export class FactorPopover {

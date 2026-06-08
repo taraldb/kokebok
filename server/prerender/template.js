@@ -115,7 +115,7 @@ function renderRecipePage(r) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${esc(r.title)} · Kokebok</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/style.css" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
@@ -131,7 +131,7 @@ function renderRecipePage(r) {
   </div>
 </nav>
 
-<div class="container" id="app">
+<div class="container recipe-page animate-in" id="app">
   <header class="hero">
     <div class="hero-top-row">
       <a class="back-link" href="/">← Alle oppskrifter</a>

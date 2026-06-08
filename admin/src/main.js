@@ -237,7 +237,6 @@ function renderForm(r) {
           <div class="fgroup-title">Fremgangsmåte</div>
           <div class="steps-layout" id="steps-layout">
             <div class="steps-col" id="step-rows"></div>
-            <div class="ing-sidebar-col" id="ing-sidebar-col"></div>
           </div>
           <button class="add-row" id="add-step-btn">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
@@ -270,6 +269,9 @@ function renderForm(r) {
 
         <div id="status-area"></div>
       </div>
+
+      <!-- Ingredient sidebar column -->
+      <div class="ing-sidebar-col" id="ing-sidebar-col"></div>
 
       <!-- Preview column -->
       <div class="preview-col" id="preview-col">
@@ -311,15 +313,21 @@ function renderForm(r) {
 
   document.getElementById('add-meta-btn').addEventListener('click', () =>
     document.getElementById('meta-rows').insertAdjacentHTML('beforeend', metaRowHtml()))
-  document.getElementById('add-ing-btn').addEventListener('click', () =>
-    document.getElementById('ingredient-rows').insertAdjacentHTML('beforeend', ingredientRowHtml()))
+  document.getElementById('add-ing-btn').addEventListener('click', () => {
+    document.getElementById('ingredient-rows').insertAdjacentHTML('beforeend', ingredientRowHtml())
+    syncIngredientsFromForm()
+  })
+  document.getElementById('ingredient-rows').addEventListener('input', () => syncIngredientsFromForm())
   document.getElementById('ingredient-rows').addEventListener('click', e => {
-    const btn = e.target.closest('[data-ing-dir]')
-    if (!btn) return
-    const row = btn.closest('[data-ing-row]')
-    const dir = btn.dataset.ingDir
+    const rmBtn = e.target.closest('[data-rm-ing]')
+    if (rmBtn) { rmBtn.closest('[data-ing-row]').remove(); syncIngredientsFromForm(); return }
+    const dirBtn = e.target.closest('[data-ing-dir]')
+    if (!dirBtn) return
+    const row = dirBtn.closest('[data-ing-row]')
+    const dir = dirBtn.dataset.ingDir
     if (dir === 'up') { const prev = row.previousElementSibling; if (prev) prev.before(row) }
     else              { const next = row.nextElementSibling;     if (next) next.after(row)  }
+    syncIngredientsFromForm()
   })
   document.getElementById('add-step-btn').addEventListener('click', () =>
     appendStepEditor(stepRowsEl, null, getCurrentIngredients()))
@@ -500,6 +508,14 @@ function appendStepEditor(container, step, ingredients) {
   })
 }
 
+function syncIngredientsFromForm() {
+  const ingredients = getCurrentIngredients()
+  currentIngredients = ingredients
+  if (ingredientSidebar) ingredientSidebar.update(ingredients)
+  stepEditors.forEach(e => e.editor.refreshIngredients(ingredients))
+  recomputeSums()
+}
+
 function recomputeSums() {
   if (!ingredientSidebar) return
   const sums = {}
@@ -619,7 +635,7 @@ function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = ''
            value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount style="text-align:right;" />
     <input placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
-    <button class="rm-mini" onclick="this.closest('.ing-row').remove()" title="Fjern">
+    <button class="rm-mini" data-rm-ing title="Fjern">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
     </button>
   </div>`
@@ -797,6 +813,34 @@ function showStatus(msg, ok) {
   if (ok) setTimeout(() => { if (area) area.innerHTML = '' }, 3000)
 }
 
+function docToHtmlPreview(doc, ingMap) {
+  function n2h(node) {
+    if (!node) return ''
+    if (node.type === 'text') {
+      let t = esc(node.text || '')
+      for (const m of node.marks || []) {
+        if (m.type === 'bold')   t = `<strong>${t}</strong>`
+        if (m.type === 'italic') t = `<em>${t}</em>`
+      }
+      return t
+    }
+    if (node.type === 'hardBreak') return '<br>'
+    if (node.type === 'ingredientRef') {
+      const { ingredientId, factor = 1, displayOverride } = node.attrs || {}
+      const ing = ingMap.get(ingredientId)
+      if (!ing) return displayOverride ? esc(displayOverride) : ''
+      const base = (ing.amount ?? 0) * factor
+      const qty = displayOverride || (base > 0 ? `${parseFloat(base.toFixed(4))} ${ing.unit || ''}`.trim() : '')
+      const qtyHtml = qty ? `<span class="ing-ref-qty">${esc(qty)}</span> ` : ''
+      return `<span class="ing-ref">${qtyHtml}<span class="ing-ref-name">${esc(ing.name || '')}</span></span>`
+    }
+    if (node.type === 'paragraph') return (node.content || []).map(n2h).join('')
+    if (node.type === 'doc') return (node.content || []).map(n2h).join('<br>')
+    return (node.content || []).map(n2h).join('')
+  }
+  return n2h(doc)
+}
+
 function updatePreview() {
   const body = document.getElementById('preview-body')
   const urlEl = document.getElementById('preview-url')
@@ -819,6 +863,7 @@ function updatePreview() {
   })).filter(m => m.label && m.value)
 
   const ings = getCurrentIngredients()
+  const ingMap = new Map(ings.map(i => [i.id, i]))
 
   if (urlEl) urlEl.textContent = id ? `kokebok.bergee.net/r/${id}` : 'kokebok.bergee.net/r/…'
 
@@ -827,48 +872,60 @@ function updatePreview() {
     return
   }
 
-  const catBadge = cat ? `<span class="cat-badge" style="font-size:0.68rem;padding:3px 10px;">${esc(cap(cat))}</span>` : ''
-  const tagPills = tags.map(t => `<span class="tag" style="font-size:0.68rem;padding:3px 10px;">${esc(t)}</span>`).join('')
+  const catBadge = cat ? `<span class="category-badge">${esc(cap(cat))}</span>` : ''
+  const tagPills = tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')
 
-  const metaHtml = [
-    activeTime ? `<div class="mi"><label>Aktiv tid</label><b>~${activeTime} min</b></div>` : '',
-    srvBase ? `<div class="mi"><label>Porsjoner</label><b>${srvBase} ${srvUnit}</b></div>` : '',
-    ...metas.map(m => `<div class="mi"><label>${esc(m.label)}</label><b>${esc(m.value)} ${esc(m.unit)}</b></div>`),
+  const metaItems = [
+    activeTime ? `<div class="meta-item"><span class="meta-label">Aktiv tid</span><span class="meta-value">~${activeTime} min</span></div>` : '',
+    srvBase ? `<div class="meta-item"><span class="meta-label">Porsjoner</span><span class="meta-value">${srvBase} ${esc(srvUnit)}</span></div>` : '',
+    ...metas.map(m => `<div class="meta-item"><span class="meta-label">${esc(m.label)}</span><span class="meta-value">${esc(m.value)} ${esc(m.unit)}</span></div>`),
   ].filter(Boolean).join('')
 
-  const ingHtml = ings.length ? `
-    <div class="pv-section-title">Ingredienser</div>
-    ${ings.map(i => `<div class="pv-ing"><span class="amt">${esc([i.amount, i.unit].filter(Boolean).join(' '))}</span><span class="nm">${esc(i.name)}</span></div>`).join('')}
-    <div class="pv-block-gap"></div>
-  ` : ''
+  const ingHtml = ings.filter(i => i.name).length ? `
+    <section>
+      <h2 class="section-title">Ingredienser</h2>
+      <ul class="ingredients-list">
+        ${ings.filter(i => i.name).map(i => `
+          <li class="ingredient">
+            <span class="ingredient-amount">${esc([i.amount, i.unit].filter(Boolean).join(' ') || '—')}</span>
+            <span class="ingredient-name">${esc(i.name)}</span>
+          </li>`).join('')}
+      </ul>
+    </section>` : ''
 
   const stepsData = stepEditors.map((e, i) => ({
     num: i + 1,
     title: e.getTitle(),
-    html: e.editor.editor.getHTML(),
-  })).filter(s => s.title || s.html !== '<p></p>')
+    html: docToHtmlPreview(e.editor.getDoc(), ingMap),
+  })).filter(s => s.title || s.html)
 
   const stepsHtml = stepsData.length ? `
-    <div class="pv-section-title">Fremgangsmåte</div>
-    ${stepsData.map(s => `
-      <div class="pv-step">
-        <span class="n">${s.num}</span>
-        <div>
-          ${s.title ? `<div class="st">${esc(s.title)}</div>` : ''}
-          <div class="sx">${s.html}</div>
-        </div>
-      </div>`).join('')}
-    <div class="pv-block-gap"></div>
-  ` : ''
+    <section>
+      <h2 class="section-title">Fremgangsmåte</h2>
+      <ol class="steps-list">
+        ${stepsData.map(s => `
+          <li class="step">
+            <span class="step-number">${s.num}</span>
+            <div class="step-content">
+              ${s.title ? `<span class="step-title">${esc(s.title)}</span>` : ''}
+              <p class="step-text">${s.html}</p>
+            </div>
+          </li>`).join('')}
+      </ol>
+    </section>` : ''
 
   body.innerHTML = `
-    <div class="pv-label">${esc(cat)}${tags[0] ? ' · ' + esc(tags[0]) : ''}</div>
-    <div class="pv-title">${esc(title)}</div>
-    ${desc ? `<div class="pv-desc">${esc(desc)}</div>` : ''}
-    ${catBadge || tagPills ? `<div class="pv-tags">${catBadge}${tagPills}</div>` : ''}
-    ${metaHtml ? `<div class="pv-meta">${metaHtml}</div>` : ''}
-    ${ingHtml}
-    ${stepsHtml}
+    <div class="recipe-page">
+      <header class="hero">
+        ${(cat || tags[0]) ? `<p class="hero-label">${esc(cat)}${tags[0] ? ' · ' + esc(tags[0]) : ''}</p>` : ''}
+        <h1>${esc(title) || 'Uten tittel'}</h1>
+        ${desc ? `<p class="hero-desc">${esc(desc)}</p>` : ''}
+        ${(catBadge || tagPills) ? `<div class="tag-list">${catBadge}${tagPills}</div>` : ''}
+        ${metaItems ? `<div class="meta-row">${metaItems}</div>` : ''}
+      </header>
+      ${ingHtml}
+      ${stepsHtml}
+    </div>
   `
 }
 
