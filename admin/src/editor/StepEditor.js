@@ -3,14 +3,10 @@ import StarterKit from '@tiptap/starter-kit'
 import { IngredientRefNode } from './IngredientRefNode.js'
 
 export class StepEditor {
-  /**
-   * @param {HTMLElement} container
-   * @param {Object} options
-   * @param {Array}  options.ingredients
-   * @param {Object} [options.initialDoc]
-   * @param {Function} [options.onUpdate]
-   */
   constructor(container, { ingredients = [], initialDoc = null, onUpdate, onFocus, onBlur } = {}) {
+    // Mutable ref shared with all NodeViews — updating .current is always seen immediately
+    this._ingredientsRef = { current: ingredients }
+
     this.editor = new Editor({
       element: container,
       extensions: [
@@ -24,7 +20,7 @@ export class StepEditor {
           horizontalRule: false,
           strike: false,
         }),
-        IngredientRefNode.configure({ ingredients }),
+        IngredientRefNode.configure({ ingredientsRef: this._ingredientsRef }),
       ],
       content: initialDoc || { type: 'doc', content: [{ type: 'paragraph' }] },
       onUpdate: onUpdate ? ({ editor }) => onUpdate(editor.getJSON()) : undefined,
@@ -34,11 +30,35 @@ export class StepEditor {
   }
 
   setIngredients(ingredients) {
-    this.editor.extensionManager.extensions
-      .find(e => e.name === 'ingredientRef')
-      ?.storage && (
-        this.editor.extensionManager.extensions.find(e => e.name === 'ingredientRef').storage.ingredients = ingredients
-      )
+    this._ingredientsRef.current = ingredients
+  }
+
+  refreshIngredients(ingredients) {
+    this._ingredientsRef.current = ingredients
+    this.editor.view.dom.querySelectorAll('.ing-chip[data-ing-id]').forEach(chipDom => {
+      const ingredientId = chipDom.dataset.ingId
+      const factor = parseFloat(chipDom.dataset.factor || '1')
+      const ing = ingredients.find(i => i.id === ingredientId)
+      const name = ing?.name ?? ingredientId ?? '?'
+      const base = ing?.amount != null ? ing.amount * factor : 0
+      const unit = ing?.unit ?? ''
+      const amtStr = base > 0 ? `${parseFloat(base.toFixed(4))} ${unit}`.trim() : ''
+      const displayOverride = chipDom.dataset.displayOverride || null
+      const qtyStr = displayOverride || amtStr
+      chipDom.title = `${name} × ${factor}`
+      chipDom.innerHTML = ''
+      if (qtyStr) {
+        const qtyEl = document.createElement('span')
+        qtyEl.className = 'ing-chip-qty'
+        qtyEl.textContent = qtyStr
+        chipDom.appendChild(qtyEl)
+        chipDom.appendChild(document.createTextNode(' '))
+      }
+      const nameEl = document.createElement('span')
+      nameEl.className = 'ing-chip-name'
+      nameEl.textContent = name
+      chipDom.appendChild(nameEl)
+    })
   }
 
   /** @returns {Object} ProseMirror JSON doc */
@@ -51,12 +71,6 @@ export class StepEditor {
     this.editor.commands.setContent(doc || { type: 'doc', content: [{ type: 'paragraph' }] })
   }
 
-  /**
-   * Insert an ingredientRef node at the current cursor position.
-   * @param {string} ingredientId
-   * @param {number} factor
-   * @param {string|null} displayOverride
-   */
   insertIngredientRef(ingredientId, factor = 1.0, displayOverride = null) {
     this.editor.chain().focus().insertContent({
       type: 'ingredientRef',
