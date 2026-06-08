@@ -2,7 +2,7 @@ const express = require('express');
 const { z } = require('zod');
 const { nanoid } = require('nanoid');
 const { listRecipes, getRecipe, upsertRecipe, deleteRecipe } = require('../db/recipes');
-const { prerenderRecipe, removePrerender } = require('../prerender/index');
+const { prerenderRecipe, prerenderIndex, removePrerender } = require('../prerender/index');
 const { writeJsonSnapshot } = require('../lib/json-snapshot');
 const { recipeToYaml, yamlToRecipe } = require('../lib/recipe-yaml');
 
@@ -71,6 +71,7 @@ router.post('/', (req, res) => {
   upsertRecipe(recipe);
   writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
   prerenderRecipe(recipe.id);
+  prerenderIndex(listRecipes());
   res.status(201).json({ ok: true, id: recipe.id });
 });
 
@@ -82,6 +83,7 @@ router.put('/:id', (req, res) => {
   upsertRecipe(recipe);
   writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
   prerenderRecipe(recipe.id);
+  prerenderIndex(listRecipes());
   res.json({ ok: true });
 });
 
@@ -89,6 +91,7 @@ router.delete('/:id', (req, res) => {
   if (!getRecipe(req.params.id)) return res.status(404).json({ error: 'not found' });
   deleteRecipe(req.params.id);
   removePrerender(req.params.id);
+  prerenderIndex(listRecipes());
   res.json({ ok: true });
 });
 
@@ -112,6 +115,7 @@ router.put('/:id/yaml', express.text({ type: ['text/yaml', 'text/plain'], limit:
   upsertRecipe(recipe);
   writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
   prerenderRecipe(recipe.id);
+  prerenderIndex(listRecipes());
   res.json({ ok: true });
 });
 
