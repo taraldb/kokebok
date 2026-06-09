@@ -766,6 +766,14 @@ body::before {
 .ing-heading-input:focus { border-bottom-color: var(--accent) !important; }
 .ing-heading-input::placeholder { font-weight: 400 !important; font-style: italic; color: var(--brown-light); }
 
+/* ── Collapse-all steps ──────────────────────────────────────────────── */
+#step-rows.all-collapsed .step-card .step-editor,
+#step-rows.all-collapsed .step-card .step-timer-field,
+#step-rows.all-collapsed .step-card .step-ing-row,
+#step-rows.all-collapsed .step-card .step-toolbar { display: none !important; }
+#step-rows.all-collapsed .step-card { gap: 0; }
+.collapse-steps-btn.active { color: var(--accent); }
+
 /* ── Step drag-and-drop ──────────────────────────────────────────────── */
 .step-drag-handle { font-size: 1.1rem; }
 .step-card.step-dragging .step-editor,

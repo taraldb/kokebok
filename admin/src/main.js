@@ -345,7 +345,15 @@ function buildFormHtml(r) {
 
         <!-- Fremgangsmåte -->
         <div class="fgroup">
-          <div class="fgroup-title">Fremgangsmåte</div>
+          <div class="fgroup-title">
+            Fremgangsmåte
+            <button class="icon-btn collapse-steps-btn" id="collapse-steps-btn"
+                    title="Komprimer alle steg" style="margin-left:auto;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M4 8h16M4 16h16M8 4l-4 4 4 4M16 20l4-4-4-4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
           <div class="steps-layout" id="steps-layout">
             <div class="steps-col" id="step-rows"></div>
           </div>
@@ -460,6 +468,12 @@ function wireFormEvents(r) {
   })
   document.getElementById('add-step-btn').addEventListener('click', () =>
     appendStepEditor(stepRowsEl, null, getCurrentIngredients()))
+  document.getElementById('collapse-steps-btn').addEventListener('click', () => {
+    const collapsed = stepRowsEl.classList.toggle('all-collapsed')
+    const btn = document.getElementById('collapse-steps-btn')
+    btn.title = collapsed ? 'Utvid alle steg' : 'Komprimer alle steg'
+    btn.classList.toggle('active', collapsed)
+  })
   document.getElementById('add-tip-btn').addEventListener('click', () =>
     document.getElementById('tip-rows').insertAdjacentHTML('beforeend', tipRowHtml()))
   document.getElementById('save-btn').addEventListener('click', save)
