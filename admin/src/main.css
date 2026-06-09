@@ -773,6 +773,15 @@ body::before {
 #step-rows.all-collapsed .step-card .step-toolbar { display: none !important; }
 #step-rows.all-collapsed .step-card { gap: 0; }
 .collapse-steps-btn.active { color: var(--accent); }
+.step-reorder { display: none; gap: 3px; flex-shrink: 0; }
+#step-rows.all-collapsed .step-reorder { display: flex; }
+
+/* ── Ingredient reorder mode ─────────────────────────────────────────── */
+.ing-reorder-btns { display: none; gap: 2px; align-items: center; }
+#ingredient-rows.ing-reorder-mode .ing-reorder-btns { display: flex; }
+#ingredient-rows.ing-reorder-mode .ing-row         { grid-template-columns: 20px 64px 70px 1fr auto 34px; }
+#ingredient-rows.ing-reorder-mode .ing-heading-row { grid-template-columns: 20px 1fr auto 34px; }
+.ing-reorder-btn.active { color: var(--accent); }
 
 /* ── Step drag-and-drop ──────────────────────────────────────────────── */
 .step-drag-handle { font-size: 1.1rem; }
@@ -818,6 +827,8 @@ body::before {
   .rrow .rcell-cat, .rrow .rcell-time { display: none; }
 .ing-row { grid-template-columns: 20px 56px 60px 1fr 32px; }
   .ing-heading-row { grid-template-columns: 20px 1fr 32px; }
+  #ingredient-rows.ing-reorder-mode .ing-row         { grid-template-columns: 20px 56px 60px 1fr auto 32px; }
+  #ingredient-rows.ing-reorder-mode .ing-heading-row { grid-template-columns: 20px 1fr auto 32px; }
   .extra-row { grid-template-columns: 1fr 70px 70px 32px; }
   .edit-grid { padding: 20px 16px 80px; }
   .wrap { padding: 0 16px 80px; }

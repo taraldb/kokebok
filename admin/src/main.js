@@ -323,7 +323,15 @@ function buildFormHtml(r) {
 
         <!-- Ingredienser -->
         <div class="fgroup">
-          <div class="fgroup-title">Ingredienser</div>
+          <div class="fgroup-title">
+            Ingredienser
+            <button class="icon-btn ing-reorder-btn" id="ing-reorder-btn"
+                    title="Sorter ingredienser" style="margin-left:auto;">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 8h16M4 16h16M8 4l-4 4 4 4M16 20l4-4-4-4"/>
+              </svg>
+            </button>
+          </div>
           <div class="dyn-list" id="ingredient-rows">
             ${(r.ingredients||[]).map(i =>
               i.type === 'heading'
@@ -460,11 +468,21 @@ function wireFormEvents(r) {
     if (rmBtn) { rmBtn.closest('[data-ing-row]').remove(); syncIngredientsFromForm(); return }
     const dirBtn = e.target.closest('[data-ing-dir]')
     if (!dirBtn) return
+    const container = document.getElementById('ingredient-rows')
     const row = dirBtn.closest('[data-ing-row]')
     const dir = dirBtn.dataset.ingDir
-    if (dir === 'up') { const prev = row.previousElementSibling; if (prev) prev.before(row) }
-    else              { const next = row.nextElementSibling;     if (next) next.after(row)  }
+    if      (dir === 'top')    { const first = container.firstElementChild; if (first !== row) container.prepend(row) }
+    else if (dir === 'up')     { const prev = row.previousElementSibling;   if (prev) prev.before(row) }
+    else if (dir === 'down')   { const next = row.nextElementSibling;       if (next) next.after(row)  }
+    else if (dir === 'bottom') { const last = container.lastElementChild;   if (last !== row) container.append(row) }
     syncIngredientsFromForm()
+  })
+  document.getElementById('ing-reorder-btn').addEventListener('click', () => {
+    const container = document.getElementById('ingredient-rows')
+    const active = container.classList.toggle('ing-reorder-mode')
+    const btn = document.getElementById('ing-reorder-btn')
+    btn.title = active ? 'Avslutt sortering' : 'Sorter ingredienser'
+    btn.classList.toggle('active', active)
   })
   document.getElementById('add-step-btn').addEventListener('click', () =>
     appendStepEditor(stepRowsEl, null, getCurrentIngredients()))
@@ -649,9 +667,11 @@ function buildStepCardHtml(step, editorId, stepNum) {
       <span class="step-num">${stepNum}</span>
       <input class="step-title-input" placeholder="Tittel på steg"
              value="${esc(step?.title || '')}" data-step-title />
-      <div class="step-reorder" style="display:flex;gap:3px;flex-shrink:0;">
-        <button class="step-mini" data-dir="up"   title="Opp">↑</button>
-        <button class="step-mini" data-dir="down" title="Ned">↓</button>
+      <div class="step-reorder">
+        <button class="step-mini" data-dir="top"   title="Til toppen"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round"><path d="M12 19V8"/><path d="M6 10l6-6 6 6"/><path d="M4 3h16"/></svg></button>
+        <button class="step-mini" data-dir="up"    title="Opp">↑</button>
+        <button class="step-mini" data-dir="down"  title="Ned">↓</button>
+        <button class="step-mini" data-dir="bottom" title="Til bunnen"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round"><path d="M12 5v11"/><path d="M6 14l6 6 6-6"/><path d="M4 21h16"/></svg></button>
       </div>
       <button class="rm-mini" data-rm-step title="Fjern steg">
         <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
@@ -927,6 +947,14 @@ function metaRowHtml(label = '', value = '', unit = 'min') {
   </div>`
 }
 
+const ING_REORDER_BTNS = `
+    <div class="ing-reorder-btns">
+      <button class="step-mini" data-ing-dir="top"    title="Til toppen"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round"><path d="M12 19V8"/><path d="M6 10l6-6 6 6"/><path d="M4 3h16"/></svg></button>
+      <button class="step-mini" data-ing-dir="up"     title="Opp">↑</button>
+      <button class="step-mini" data-ing-dir="down"   title="Ned">↓</button>
+      <button class="step-mini" data-ing-dir="bottom" title="Til bunnen"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round"><path d="M12 5v11"/><path d="M6 14l6 6 6-6"/><path d="M4 21h16"/></svg></button>
+    </div>`
+
 function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = '') {
   const safeId = id || genId()
   return `<div class="ing-row" data-ing-row>
@@ -936,6 +964,7 @@ function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = ''
            value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount style="text-align:right;" />
     <input placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
+    ${ING_REORDER_BTNS}
     <button class="rm-mini" data-rm-ing title="Fjern">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
     </button>
@@ -949,6 +978,7 @@ function ingredientHeadingRowHtml(id = '', name = '') {
     <input type="hidden" data-ing-id-val value="${esc(safeId)}" />
     <input class="ing-heading-input" placeholder="Del av oppskriften, f.eks. «Glasur»"
            value="${esc(name)}" data-ing-name />
+    ${ING_REORDER_BTNS}
     <button class="rm-mini" data-rm-ing title="Fjern overskrift">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
     </button>
