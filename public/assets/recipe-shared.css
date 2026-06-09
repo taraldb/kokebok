@@ -248,6 +248,16 @@
 .recipe-page .ingredient-name { flex: 1; color: var(--text); font-size: 0.92rem; }
 .recipe-page .ingredient-desc { color: var(--text-muted); }
 
+.recipe-page .ingredient-heading {
+  list-style: none;
+  font-size: 0.72em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  padding: 14px 14px 2px;
+}
+
 /* ── Steps ────────────────────────────────────────────────────── */
 .recipe-page .steps-list { list-style: none; display: grid; gap: 12px; }
 

@@ -16,6 +16,7 @@ const IngredientSchema = z.object({
   amount: z.number().nullable().optional(),
   unit: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
+  type: z.enum(['ingredient', 'heading']).default('ingredient'),
 });
 
 const StepSchema = z.object({

@@ -9,6 +9,7 @@ function migrate() {
   migrateIngredientsCompositePk(db);
   migrateIngredientsAddDescription(db);
   migrateActiveTime(db);
+  migrateIngredientsAddType(db);
 }
 
 function migrateIngredientsAddDescription(db) {
@@ -67,6 +68,13 @@ function migrateActiveTime(db) {
     migrated++;
   }
   if (migrated > 0) console.log(`Migrated active_time for ${migrated} recipes`);
+}
+
+function migrateIngredientsAddType(db) {
+  const cols = db.prepare(`PRAGMA table_info(ingredients)`).all();
+  if (cols.some(c => c.name === 'type')) return;
+  db.exec(`ALTER TABLE ingredients ADD COLUMN type TEXT NOT NULL DEFAULT 'ingredient'`);
+  console.log('Added type column to ingredients');
 }
 
 module.exports = { migrate };

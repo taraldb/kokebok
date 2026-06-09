@@ -337,6 +337,10 @@ function renderRecipePage(r) {
           </div>` : '';
 
   const ingredientItems = (r.ingredients || []).map(ing => {
+    if (ing.type === 'heading') {
+      return `
+        <li class="ingredient-heading">${esc(capitalize(ing.name))}</li>`;
+    }
     const amt = ing.amount ?? null;
     const descHtml = ing.description ? ` <span class="ingredient-desc">(${esc(ing.description)})</span>` : '';
     // Only add data-base/data-unit when amount is known — scaling JS skips elements without these attrs

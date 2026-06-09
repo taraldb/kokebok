@@ -451,9 +451,31 @@ body::before {
 .tag-chip button:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 .tag-edit input { flex: 1; min-width: 120px; border: none; background: none; outline: none; font-family: inherit; font-size: 0.88rem; color: var(--text); padding: 5px; }
 
+.tag-field { position: relative; }
+.tag-suggest {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
+  background: var(--warm-white); border: 1px solid var(--brown-light);
+  border-radius: 10px; box-shadow: 0 4px 16px color-mix(in srgb, var(--brown) 12%, transparent);
+  overflow: hidden;
+}
+.tag-suggest-item {
+  padding: 8px 14px; font-size: 0.88rem; cursor: pointer; color: var(--text);
+  transition: background .1s;
+}
+.tag-suggest-item:hover, .tag-suggest-item.active { background: var(--sel); }
+
+/* drag handle */
+.drag-handle {
+  cursor: grab; color: var(--brown-light); user-select: none; flex-shrink: 0;
+  font-size: 1.1rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  width: 20px; transition: color .15s;
+}
+.drag-handle:hover { color: var(--text-muted); }
+.drag-handle:active { cursor: grabbing; }
+
 /* dynamic ingredient rows */
 .dyn-list { display: flex; flex-direction: column; gap: 8px; }
-.ing-row { display: grid; grid-template-columns: 64px 70px 1fr 34px; gap: 8px; align-items: center; }
+.ing-row { display: grid; grid-template-columns: 20px 64px 70px 1fr 34px; gap: 8px; align-items: center; }
 .ing-row input { padding: 9px 11px; border: 1px solid var(--brown-light); border-radius: 9px; background: var(--warm-white); color: var(--text); font-family: inherit; font-size: 0.9rem; font-weight: 300; outline: none; transition: border-color .15s; }
 .ing-row input:focus { border-color: var(--accent); }
 .rm-mini {
@@ -728,6 +750,47 @@ body::before {
 .raw-cancel-btn { padding: 8px 14px; background: none; border: 1px solid var(--brown-light); border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.88rem; color: var(--text-muted); }
 .raw-cancel-btn:hover { border-color: var(--brown); color: var(--brown); }
 
+/* ── Ingredient drag-and-drop ────────────────────────────────────────── */
+.ing-row-dragging { opacity: 0.35; }
+.ing-row.drop-above { box-shadow: 0 -2px 0 var(--accent); }
+.ing-row.drop-below { box-shadow: 0 2px 0 var(--accent); }
+
+/* ── Ingredient heading row ──────────────────────────────────────────── */
+.ing-heading-row { grid-template-columns: 20px 1fr 34px; }
+.ing-heading-row .drag-handle { align-self: center; }
+.ing-heading-input {
+  font-weight: 600 !important; font-size: 0.85rem; letter-spacing: 0.04em; color: var(--brown);
+  border: none !important; border-bottom: 2px solid var(--brown-light) !important; border-radius: 0 !important;
+  background: transparent !important; padding: 6px 4px !important;
+}
+.ing-heading-input:focus { border-bottom-color: var(--accent) !important; }
+.ing-heading-input::placeholder { font-weight: 400 !important; font-style: italic; color: var(--brown-light); }
+
+/* ── Step drag-and-drop ──────────────────────────────────────────────── */
+.step-drag-handle { font-size: 1.1rem; }
+.step-card.step-dragging .step-editor,
+.step-card.step-dragging .step-timer-field,
+.step-card.step-dragging .step-ing-row,
+.step-card.step-dragging .step-toolbar { display: none !important; }
+.step-card.step-dragging { opacity: 0.5; }
+.step-card.drop-above { box-shadow: 0 -3px 0 var(--accent), 0 4px 22px color-mix(in srgb, var(--accent) 10%, transparent); }
+.step-card.drop-below { box-shadow: 0 3px 0 var(--accent), 0 4px 22px color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* ── Ingredient sidebar heading ──────────────────────────────────────── */
+.isb-heading {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted); padding: 10px 10px 2px; list-style: none; cursor: default;
+  pointer-events: none; display: block; background: transparent; border-color: transparent;
+}
+.ing-sidebar li.isb-heading:hover { border-color: transparent; transform: none; background: transparent; }
+.ing-sidebar li.isb-heading + li:first-of-type { margin-top: 0; }
+
+/* ── Mobile pill section heading ─────────────────────────────────────── */
+.step-ing-heading {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--text-muted); padding: 0 6px; align-self: center; white-space: nowrap; flex-shrink: 0;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 1000px) {
   .edit-grid { grid-template-columns: 1fr; }
@@ -745,7 +808,8 @@ body::before {
   .list-head .h-cat, .list-head .h-time { display: none; }
   .rrow { grid-template-columns: 28px 1fr 36px; }
   .rrow .rcell-cat, .rrow .rcell-time { display: none; }
-.ing-row { grid-template-columns: 56px 60px 1fr 32px; }
+.ing-row { grid-template-columns: 20px 56px 60px 1fr 32px; }
+  .ing-heading-row { grid-template-columns: 20px 1fr 32px; }
   .extra-row { grid-template-columns: 1fr 70px 70px 32px; }
   .edit-grid { padding: 20px 16px 80px; }
   .wrap { padding: 0 16px 80px; }

@@ -44,6 +44,13 @@ export class IngredientSidebar {
     `
     const ul = this._container.querySelector('ul')
     this._ingredients.forEach(ing => {
+      if (ing.type === 'heading') {
+        const li = document.createElement('li')
+        li.className = 'isb-heading'
+        li.textContent = ing.name
+        ul.appendChild(li)
+        return
+      }
       const li = document.createElement('li')
       li.dataset.ingId = ing.id
       li.innerHTML = `

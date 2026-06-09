@@ -117,12 +117,13 @@ function upsertRecipe(r) {
     }
     for (const ing of r.ingredients || []) {
       db.prepare(`
-        INSERT INTO ingredients (recipe_id,id,position,name,amount,unit,description)
-        VALUES (@recipe_id,@id,@position,@name,@amount,@unit,@description)
+        INSERT INTO ingredients (recipe_id,id,position,name,amount,unit,description,type)
+        VALUES (@recipe_id,@id,@position,@name,@amount,@unit,@description,@type)
         ON CONFLICT(recipe_id,id) DO UPDATE SET
           position=excluded.position, name=excluded.name,
-          amount=excluded.amount, unit=excluded.unit, description=excluded.description
-      `).run({ ...ing, recipe_id: r.id });
+          amount=excluded.amount, unit=excluded.unit,
+          description=excluded.description, type=excluded.type
+      `).run({ ...ing, recipe_id: r.id, type: ing.type || 'ingredient' });
     }
 
     const incomingStepIds = new Set((r.steps || []).map(s => s.id));

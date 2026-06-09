@@ -325,12 +325,22 @@ function buildFormHtml(r) {
         <div class="fgroup">
           <div class="fgroup-title">Ingredienser</div>
           <div class="dyn-list" id="ingredient-rows">
-            ${(r.ingredients||[]).map(i => ingredientRowHtml(i.id, i.amount, i.unit, i.name, i.description)).join('')}
+            ${(r.ingredients||[]).map(i =>
+              i.type === 'heading'
+                ? ingredientHeadingRowHtml(i.id, i.name)
+                : ingredientRowHtml(i.id, i.amount, i.unit, i.name, i.description)
+            ).join('')}
           </div>
-          <button class="add-row" id="add-ing-btn">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-            Legg til ingrediens
-          </button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="add-row" id="add-ing-btn">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+              Legg til ingrediens
+            </button>
+            <button class="add-row" id="add-heading-btn">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h6" stroke-linecap="round"/></svg>
+              Legg til overskrift
+            </button>
+          </div>
         </div>
 
         <!-- Fremgangsmåte -->
@@ -432,6 +442,10 @@ function wireFormEvents(r) {
     document.getElementById('ingredient-rows').insertAdjacentHTML('beforeend', ingredientRowHtml())
     syncIngredientsFromForm()
   })
+  document.getElementById('add-heading-btn').addEventListener('click', () => {
+    document.getElementById('ingredient-rows').insertAdjacentHTML('beforeend', ingredientHeadingRowHtml())
+    syncIngredientsFromForm()
+  })
   document.getElementById('ingredient-rows').addEventListener('input', () => syncIngredientsFromForm())
   document.getElementById('ingredient-rows').addEventListener('click', e => {
     const rmBtn = e.target.closest('[data-rm-ing]')
@@ -453,6 +467,8 @@ function wireFormEvents(r) {
   document.getElementById('del-btn')?.addEventListener('click', () => del(r.id))
 
   wireTagEditor()
+  wireIngredientDragDrop()
+  wireStepDragDrop(stepRowsEl)
 
   document.getElementById('form-col').addEventListener('input', () => updatePreview())
 
@@ -462,6 +478,122 @@ function wireFormEvents(r) {
     const collapsed = grid.classList.toggle('preview-collapsed')
     localStorage.setItem('previewCollapsed', collapsed ? '1' : '0')
   })
+}
+
+// ── Drag-and-drop: ingredient rows ───────────────────────────────────────────
+
+function wireIngredientDragDrop() {
+  const container = document.getElementById('ingredient-rows')
+  let dragSrc = null
+
+  function cleanup() {
+    if (dragSrc) { dragSrc.removeAttribute('draggable'); dragSrc.classList.remove('ing-row-dragging') }
+    container.querySelectorAll('[data-ing-row]').forEach(r => r.classList.remove('drop-above', 'drop-below'))
+    dragSrc = null
+  }
+
+  container.addEventListener('mousedown', e => {
+    const handle = e.target.closest('.drag-handle')
+    if (!handle) return
+    const row = handle.closest('[data-ing-row]')
+    if (row) row.setAttribute('draggable', 'true')
+  }, true)
+
+  container.addEventListener('dragstart', e => {
+    const row = e.target.closest('[data-ing-row]')
+    if (!row || !row.hasAttribute('draggable')) return
+    dragSrc = row
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', 'ing-row')
+    requestAnimationFrame(() => row.classList.add('ing-row-dragging'))
+  })
+
+  container.addEventListener('dragover', e => {
+    if (!dragSrc) return
+    const row = e.target.closest('[data-ing-row]')
+    if (!row || row === dragSrc) return
+    e.preventDefault()
+    const rect = row.getBoundingClientRect()
+    container.querySelectorAll('[data-ing-row]').forEach(r => r.classList.remove('drop-above', 'drop-below'))
+    row.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below')
+  })
+
+  container.addEventListener('drop', e => {
+    if (!dragSrc) return
+    e.preventDefault()
+    const target = container.querySelector('[data-ing-row].drop-above, [data-ing-row].drop-below')
+    if (target && target !== dragSrc) {
+      if (target.classList.contains('drop-above')) target.before(dragSrc)
+      else target.after(dragSrc)
+      syncIngredientsFromForm()
+    }
+    cleanup()
+  })
+
+  container.addEventListener('dragend', cleanup)
+}
+
+// ── Drag-and-drop: step cards ─────────────────────────────────────────────────
+
+function wireStepDragDrop(container) {
+  let dragSrc = null
+
+  function cleanup() {
+    container.querySelectorAll('[data-step-wrapper]').forEach(c => {
+      c.removeAttribute('draggable')
+      c.classList.remove('step-dragging', 'drop-above', 'drop-below')
+    })
+    dragSrc = null
+  }
+
+  container.addEventListener('mousedown', e => {
+    const handle = e.target.closest('.step-drag-handle')
+    if (!handle) return
+    const card = handle.closest('[data-step-wrapper]')
+    if (card) card.setAttribute('draggable', 'true')
+  }, true)
+
+  container.addEventListener('dragstart', e => {
+    const card = e.target.closest('[data-step-wrapper]')
+    if (!card || !card.hasAttribute('draggable')) return
+    dragSrc = card
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', card.dataset.wrapperId)
+    requestAnimationFrame(() => card.classList.add('step-dragging'))
+  })
+
+  container.addEventListener('dragover', e => {
+    if (!dragSrc) return
+    const card = e.target.closest('[data-step-wrapper]')
+    if (!card || card === dragSrc) return
+    e.preventDefault()
+    const rect = card.getBoundingClientRect()
+    container.querySelectorAll('[data-step-wrapper]').forEach(c => c.classList.remove('drop-above', 'drop-below'))
+    card.classList.add(e.clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below')
+  })
+
+  container.addEventListener('drop', e => {
+    if (!dragSrc) return
+    e.preventDefault()
+    const target = container.querySelector('[data-step-wrapper].drop-above, [data-step-wrapper].drop-below')
+    if (target && target !== dragSrc) {
+      const srcIdx = stepEditors.findIndex(ed => ed.wrapper === dragSrc)
+      const tgtIdx = stepEditors.findIndex(ed => ed.wrapper === target)
+      if (srcIdx !== -1 && tgtIdx !== -1) {
+        const isAbove = target.classList.contains('drop-above')
+        const destIdx = isAbove
+          ? (srcIdx < tgtIdx ? tgtIdx - 1 : tgtIdx)
+          : (srcIdx < tgtIdx ? tgtIdx : tgtIdx + 1)
+        const [moved] = stepEditors.splice(srcIdx, 1)
+        stepEditors.splice(destIdx, 0, moved)
+        stepEditors.forEach(ed => container.appendChild(ed.wrapper))
+        container.querySelectorAll('.step-num').forEach((el, i) => { el.textContent = i + 1 })
+      }
+    }
+    cleanup()
+  })
+
+  container.addEventListener('dragend', cleanup)
 }
 
 function renderForm(r) {
@@ -476,8 +608,19 @@ function renderForm(r) {
 function getCurrentIngredients() {
   return [...document.querySelectorAll('#ingredient-rows [data-ing-id-val]')].map(el => {
     const row = el.closest('.ing-row')
+    const type = row.dataset.ingType || 'ingredient'
+    if (type === 'heading') {
+      return {
+        id: el.value,
+        type: 'heading',
+        name: row.querySelector('[data-ing-name]').value.trim(),
+        amount: null,
+        unit: null,
+      }
+    }
     return {
       id: el.value,
+      type: 'ingredient',
       amount: parseFloat(row.querySelector('[data-ing-amount]').value) || null,
       unit: row.querySelector('[data-ing-unit]').value.trim() || null,
       name: row.querySelector('[data-ing-name]').value.trim(),
@@ -488,6 +631,7 @@ function getCurrentIngredients() {
 function buildStepCardHtml(step, editorId, stepNum) {
   return `
     <div class="step-card-head">
+      <span class="drag-handle step-drag-handle" title="Dra for å endre rekkefølge">⠿</span>
       <span class="step-num">${stepNum}</span>
       <input class="step-title-input" placeholder="Tittel på steg"
              value="${esc(step?.title || '')}" data-step-title />
@@ -684,38 +828,61 @@ function reorderStep(wrapperId, direction) {
 
 function populateIngRow(row, ingredients) {
   const sums = currentSums
-  const sorted = [...ingredients].sort((a, b) => {
-    const aEmpty = (sums[a.id] ?? 0) === 0
-    const bEmpty = (sums[b.id] ?? 0) === 0
-    return aEmpty === bEmpty ? 0 : aEmpty ? -1 : 1
-  })
-
   row.innerHTML = ''
-  sorted.forEach(ing => {
-    const sum = sums[ing.id] ?? 0
-    const isDone = Math.abs(sum - 1.0) <= 0.02
-    const remaining = 1 - sum
-    const colorClass = sum === 0 ? 'pill-grey' : (isDone ? 'pill-green' : 'pill-orange')
 
-    let remText = ''
-    if (!isDone && ing.amount != null) {
-      const remAmt = parseFloat((ing.amount * Math.max(0, remaining)).toFixed(4))
-      if (remAmt > 0) remText = `${remAmt}${ing.unit ? ' ' + ing.unit : ''}`
+  // Build sections respecting heading rows
+  const sections = []
+  let current = { heading: null, items: [] }
+  for (const ing of ingredients) {
+    if (ing.type === 'heading') {
+      if (current.items.length > 0 || current.heading !== null) sections.push(current)
+      current = { heading: ing.name, items: [] }
+    } else {
+      current.items.push(ing)
+    }
+  }
+  sections.push(current)
+
+  for (const section of sections) {
+    if (section.heading) {
+      const label = document.createElement('span')
+      label.className = 'step-ing-heading'
+      label.textContent = section.heading
+      row.appendChild(label)
     }
 
-    const insertFactor = (!isDone && remaining > 0.001) ? remaining : 1.0
-    const btn = document.createElement('button')
-    btn.className = `step-ing-pill ${colorClass}`
-    btn.innerHTML = `<span class="step-ing-pill-name">${esc(ing.name)}</span>${remText ? `<span class="step-ing-pill-rem">${esc(remText)}</span>` : ''}`
-    btn.addEventListener('click', () => {
-      cancelIngRowHide()
-      if (lastFocusedStepEditor) {
-        lastFocusedStepEditor.insertIngredientRef(ing.id, insertFactor, null)
-        recomputeSums()
-      }
+    const sorted = [...section.items].sort((a, b) => {
+      const aEmpty = (sums[a.id] ?? 0) === 0
+      const bEmpty = (sums[b.id] ?? 0) === 0
+      return aEmpty === bEmpty ? 0 : aEmpty ? -1 : 1
     })
-    row.appendChild(btn)
-  })
+
+    sorted.forEach(ing => {
+      const sum = sums[ing.id] ?? 0
+      const isDone = Math.abs(sum - 1.0) <= 0.02
+      const remaining = 1 - sum
+      const colorClass = sum === 0 ? 'pill-grey' : (isDone ? 'pill-green' : 'pill-orange')
+
+      let remText = ''
+      if (!isDone && ing.amount != null) {
+        const remAmt = parseFloat((ing.amount * Math.max(0, remaining)).toFixed(4))
+        if (remAmt > 0) remText = `${remAmt}${ing.unit ? ' ' + ing.unit : ''}`
+      }
+
+      const insertFactor = (!isDone && remaining > 0.001) ? remaining : 1.0
+      const btn = document.createElement('button')
+      btn.className = `step-ing-pill ${colorClass}`
+      btn.innerHTML = `<span class="step-ing-pill-name">${esc(ing.name)}</span>${remText ? `<span class="step-ing-pill-rem">${esc(remText)}</span>` : ''}`
+      btn.addEventListener('click', () => {
+        cancelIngRowHide()
+        if (lastFocusedStepEditor) {
+          lastFocusedStepEditor.insertIngredientRef(ing.id, insertFactor, null)
+          recomputeSums()
+        }
+      })
+      row.appendChild(btn)
+    })
+  }
 }
 
 function updateAllIngRows(ingredients) {
@@ -749,12 +916,26 @@ function metaRowHtml(label = '', value = '', unit = 'min') {
 function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = '') {
   const safeId = id || genId()
   return `<div class="ing-row" data-ing-row>
+    <span class="drag-handle" title="Dra for å endre rekkefølge">⠿</span>
     <input type="hidden" data-ing-id="${esc(safeId)}" data-ing-id-val value="${esc(safeId)}" />
     <input type="number" step="any" placeholder="700"
            value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount style="text-align:right;" />
     <input placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
     <button class="rm-mini" data-rm-ing title="Fjern">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+    </button>
+  </div>`
+}
+
+function ingredientHeadingRowHtml(id = '', name = '') {
+  const safeId = id || genId()
+  return `<div class="ing-row ing-heading-row" data-ing-row data-ing-type="heading">
+    <span class="drag-handle" title="Dra for å endre rekkefølge">⠿</span>
+    <input type="hidden" data-ing-id-val value="${esc(safeId)}" />
+    <input class="ing-heading-input" placeholder="Del av oppskriften, f.eks. «Glasur»"
+           value="${esc(name)}" data-ing-name />
+    <button class="rm-mini" data-rm-ing title="Fjern overskrift">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
     </button>
   </div>`
@@ -816,14 +997,19 @@ async function save() {
   const title = document.getElementById('f-title').value.trim()
   if (!id || !title) { showStatus('ID og tittel er påkrevd.', false); return }
 
-  const rawIngredients = [...document.querySelectorAll('[data-ing-id-val]')].map((el, pos) => ({
-    id: el.value,
-    position: pos,
-    amount: parseFloat(el.closest('.ing-row').querySelector('[data-ing-amount]').value) || null,
-    unit: el.closest('.ing-row').querySelector('[data-ing-unit]').value.trim() || null,
-    name: el.closest('.ing-row').querySelector('[data-ing-name]').value.trim(),
-    description: el.closest('.ing-row').querySelector('[data-ing-desc]')?.value.trim() || null,
-  })).filter(i => i.name)
+  const rawIngredients = [...document.querySelectorAll('[data-ing-id-val]')].map((el, pos) => {
+    const row = el.closest('.ing-row')
+    const type = row.dataset.ingType || 'ingredient'
+    return {
+      id: el.value,
+      position: pos,
+      type,
+      amount: type === 'heading' ? null : (parseFloat(row.querySelector('[data-ing-amount]')?.value) || null),
+      unit: type === 'heading' ? null : (row.querySelector('[data-ing-unit]')?.value.trim() || null),
+      name: row.querySelector('[data-ing-name]').value.trim(),
+      description: type === 'heading' ? null : (row.querySelector('[data-ing-desc]')?.value.trim() || null),
+    }
+  }).filter(i => i.name)
 
   const savedIngIds = new Set((recipes.find(r => r.id === editingId)?.ingredients || []).map(i => i.id))
   const takenSlugs = new Set(rawIngredients.filter(i => savedIngIds.has(i.id)).map(i => i.id))
