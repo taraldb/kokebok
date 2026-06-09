@@ -134,6 +134,105 @@ function splitValueUnit(str) {
   return { value: m[1].trim(), unit: m[2].trim() }
 }
 
+// ── Tag chip editor ───────────────────────────────────────────────────────────
+
+function wireTagEditor() {
+  const editEl = document.getElementById('tag-edit')
+  const inputEl = document.getElementById('f-tags-input')
+  const suggestEl = document.getElementById('tag-suggest')
+  if (!editEl || !inputEl || !suggestEl) return
+
+  const allTags = [...new Set(recipes.flatMap(r => r.tags || []))].sort()
+  let activeIdx = -1
+
+  function getCurrentTags() {
+    return [...editEl.querySelectorAll('[data-tag]')].map(el => el.dataset.tag)
+  }
+
+  function updatePlaceholder() {
+    inputEl.placeholder = editEl.querySelector('[data-tag]') ? 'Legg til…' : 'pasta, rask, hverdagsmat…'
+  }
+
+  function hideSuggest() {
+    suggestEl.hidden = true
+    activeIdx = -1
+  }
+
+  function renderSuggest(matches) {
+    if (!matches.length) { hideSuggest(); return }
+    activeIdx = -1
+    suggestEl.innerHTML = matches
+      .map(t => `<div class="tag-suggest-item" data-suggest="${esc(t)}">${esc(t)}</div>`)
+      .join('')
+    suggestEl.hidden = false
+  }
+
+  function addTag(text) {
+    const t = text.trim().toLowerCase()
+    if (!t || getCurrentTags().includes(t)) return
+    const chip = document.createElement('span')
+    chip.className = 'tag-chip'
+    chip.dataset.tag = t
+    chip.innerHTML = `${esc(t)}<button type="button" aria-label="Fjern ${esc(t)}">×</button>`
+    editEl.insertBefore(chip, inputEl)
+    inputEl.value = ''
+    updatePlaceholder()
+    hideSuggest()
+    updatePreview()
+  }
+
+  function removeLastTag() {
+    const chips = editEl.querySelectorAll('[data-tag]')
+    if (chips.length) { chips[chips.length - 1].remove(); updatePlaceholder(); updatePreview() }
+  }
+
+  inputEl.addEventListener('input', () => {
+    const q = inputEl.value.trim().toLowerCase()
+    if (!q) { hideSuggest(); return }
+    const current = new Set(getCurrentTags())
+    renderSuggest(allTags.filter(t => !current.has(t) && t.includes(q)).slice(0, 8))
+  })
+
+  inputEl.addEventListener('keydown', e => {
+    const items = [...suggestEl.querySelectorAll('.tag-suggest-item')]
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      activeIdx = Math.min(activeIdx + 1, items.length - 1)
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      activeIdx = Math.max(activeIdx - 1, -1)
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx))
+    } else if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      const active = items[activeIdx]
+      addTag(active ? active.dataset.suggest : inputEl.value.replace(/,/g, ''))
+    } else if (e.key === 'Backspace' && !inputEl.value) {
+      removeLastTag()
+    } else if (e.key === 'Escape') {
+      hideSuggest()
+    }
+  })
+
+  suggestEl.addEventListener('mousedown', e => {
+    const item = e.target.closest('.tag-suggest-item')
+    if (item) { e.preventDefault(); addTag(item.dataset.suggest) }
+  })
+
+  editEl.addEventListener('click', e => {
+    const btn = e.target.closest('.tag-chip button')
+    if (btn) { btn.closest('.tag-chip').remove(); updatePlaceholder(); updatePreview() }
+  })
+
+  document.addEventListener('click', function hideOnOutside(e) {
+    if (!document.getElementById('tag-edit')) {
+      document.removeEventListener('click', hideOnOutside)
+      return
+    }
+    if (!editEl.contains(e.target) && !suggestEl.contains(e.target)) hideSuggest()
+  })
+}
+
 // ── Form ──────────────────────────────────────────────────────────────────────
 
 function newRecipeForm() {
@@ -186,8 +285,15 @@ function renderForm(r) {
             <textarea id="f-desc">${esc(r.description||'')}</textarea>
           </div>
           <div class="field">
-            <label>Tags (kommaseparert)</label>
-            <input id="f-tags" value="${esc((r.tags||[]).join(', '))}" placeholder="vegetar, rask, suppe…" />
+            <label>Tags</label>
+            <div class="tag-field">
+              <div class="tag-edit" id="tag-edit">
+                ${(r.tags||[]).map(t => `<span class="tag-chip" data-tag="${esc(t)}">${esc(t)}<button type="button" aria-label="Fjern ${esc(t)}">×</button></span>`).join('')}
+                <input id="f-tags-input" placeholder="${(r.tags||[]).length ? 'Legg til…' : 'pasta, rask, hverdagsmat…'}" autocomplete="off" />
+              </div>
+              <div id="tag-suggest" class="tag-suggest" hidden></div>
+            </div>
+            <span class="sub">Trykk Enter eller komma for å legge til</span>
           </div>
         </div>
 
@@ -336,6 +442,8 @@ function renderForm(r) {
   document.getElementById('save-btn').addEventListener('click', save)
   document.getElementById('cancel-btn').addEventListener('click', () => showList())
   document.getElementById('del-btn')?.addEventListener('click', () => del(r.id))
+
+  wireTagEditor()
 
   const rawContainer = document.createElement('div')
   rawContainer.id = 'raw-toggle-container'
@@ -746,7 +854,7 @@ async function save() {
     label:        document.getElementById('f-label').value.trim() || null,
     description:  document.getElementById('f-desc').value.trim() || null,
     category:     document.getElementById('f-category').value || null,
-    tags:         document.getElementById('f-tags').value.split(',').map(s => s.trim()).filter(Boolean),
+    tags:         [...document.querySelectorAll('#tag-edit [data-tag]')].map(el => el.dataset.tag),
     active_time:  parseNumeric(document.getElementById('f-active-time')?.value) || null,
     meta:         [...document.querySelectorAll('[data-meta-label]')].map(el => ({
                     label: el.value.trim(),
@@ -849,12 +957,12 @@ function updatePreview() {
   const id = document.getElementById('f-id')?.value.trim() || ''
   const title = document.getElementById('f-title')?.value.trim() || ''
   const desc = document.getElementById('f-desc')?.value.trim() || ''
+  const labelOverride = document.getElementById('f-label')?.value.trim() || ''
   const cat = document.getElementById('f-category')?.value || ''
-  const tagsRaw = document.getElementById('f-tags')?.value || ''
   const activeTime = document.getElementById('f-active-time')?.value || ''
   const srvBase = document.getElementById('f-srv-base')?.value || ''
   const srvUnit = document.getElementById('f-srv-unit')?.value || 'porsjoner'
-  const tags = tagsRaw.split(',').map(t => t.trim()).filter(Boolean)
+  const tags = [...document.querySelectorAll('#tag-edit [data-tag]')].map(el => el.dataset.tag)
 
   const metas = [...document.querySelectorAll('.extra-row')].map(row => ({
     label: row.querySelector('[data-meta-label]')?.value.trim() || '',
@@ -917,7 +1025,7 @@ function updatePreview() {
   body.innerHTML = `
     <div class="recipe-page">
       <header class="hero">
-        ${(cat || tags[0]) ? `<p class="hero-label">${esc(cat)}${tags[0] ? ' · ' + esc(tags[0]) : ''}</p>` : ''}
+        ${(() => { const hl = labelOverride || [cat, tags[0]].filter(Boolean).join(' · '); return hl ? `<p class="hero-label">${esc(hl)}</p>` : ''; })()}
         <h1>${esc(title) || 'Uten tittel'}</h1>
         ${desc ? `<p class="hero-desc">${esc(desc)}</p>` : ''}
         ${(catBadge || tagPills) ? `<div class="tag-list">${catBadge}${tagPills}</div>` : ''}

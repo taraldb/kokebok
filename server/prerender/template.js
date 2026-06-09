@@ -152,7 +152,7 @@ function renderRecipePage(r) {
         </button>
       </div>
     </div>
-    ${r.label ? `<p class="hero-label">${esc(r.label)}</p>` : ''}
+    ${(() => { const heroLabel = r.label || [r.category, (r.tags||[])[0]].filter(Boolean).join(' · '); return heroLabel ? `<p class="hero-label">${esc(heroLabel)}</p>` : ''; })()}
     <h1>${esc(r.title)}</h1>
     ${r.description ? `<p class="hero-desc">${esc(r.description)}</p>` : ''}
     <div class="tag-list">${tagBadges}</div>
