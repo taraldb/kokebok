@@ -965,12 +965,12 @@ function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = ''
            value="${amount !== null && amount !== '' ? amount : ''}" data-ing-amount style="text-align:right;" />
     <input placeholder="ml" value="${esc(unit||'')}" data-ing-unit />
     <input placeholder="Ingrediensnavn" value="${esc(name||'')}" data-ing-name />
+    <input class="ing-desc-input" placeholder="Beskrivelse, f.eks. romtemperert"
+           value="${esc(desc||'')}" data-ing-desc />
     ${ING_REORDER_BTNS}
     <button class="rm-mini" data-rm-ing title="Fjern">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
     </button>
-    <input class="ing-desc-input" placeholder="Beskrivelse, f.eks. romtemperert"
-           value="${esc(desc||'')}" data-ing-desc />
   </div>`
 }
 
