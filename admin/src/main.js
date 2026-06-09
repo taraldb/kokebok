@@ -1234,8 +1234,9 @@ function updatePreview() {
     <section>
       <h2 class="section-title">Ingredienser</h2>
       <ul class="ingredients-list">
-        ${ings.filter(i => i.name).map(i => `
-          <li class="ingredient">
+        ${ings.filter(i => i.name).map(i => i.type === 'heading'
+          ? `<li class="ingredient-heading">${esc(i.name)}</li>`
+          : `<li class="ingredient">
             <span class="ingredient-amount">${esc([i.amount, i.unit].filter(Boolean).join(' ') || '—')}</span>
             <span class="ingredient-name">${esc(i.name)}</span>
           </li>`).join('')}
