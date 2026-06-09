@@ -776,6 +776,17 @@ body::before {
 .step-reorder { display: none; gap: 3px; flex-shrink: 0; }
 #step-rows.all-collapsed .step-reorder { display: flex; }
 
+/* ── Ingredient description ──────────────────────────────────────────── */
+.ing-desc-input {
+  grid-column: 2 / -1;
+  font-size: 0.82rem; font-style: italic; color: var(--text-muted);
+  padding: 5px 11px; border: 1px solid color-mix(in srgb, var(--brown-light) 60%, transparent);
+  border-radius: 9px; background: var(--warm-white); font-family: inherit;
+  outline: none; transition: border-color .15s;
+}
+.ing-desc-input:focus { border-color: var(--accent); color: var(--text); font-style: normal; }
+.ing-desc-input::placeholder { opacity: 0.6; }
+
 /* ── Ingredient reorder mode ─────────────────────────────────────────── */
 .ing-reorder-btns { display: none; gap: 2px; align-items: center; }
 #ingredient-rows.ing-reorder-mode .ing-reorder-btns { display: flex; }

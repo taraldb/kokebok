@@ -656,6 +656,7 @@ function getCurrentIngredients() {
       amount: parseFloat(row.querySelector('[data-ing-amount]').value) || null,
       unit: row.querySelector('[data-ing-unit]').value.trim() || null,
       name: row.querySelector('[data-ing-name]').value.trim(),
+      description: row.querySelector('[data-ing-desc]')?.value.trim() || null,
     }
   }).filter(i => i.name)
 }
@@ -968,6 +969,8 @@ function ingredientRowHtml(id = '', amount = '', unit = '', name = '', desc = ''
     <button class="rm-mini" data-rm-ing title="Fjern">
       <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
     </button>
+    <input class="ing-desc-input" placeholder="Beskrivelse, f.eks. romtemperert"
+           value="${esc(desc||'')}" data-ing-desc />
   </div>`
 }
 
@@ -1238,7 +1241,7 @@ function updatePreview() {
           ? `<li class="ingredient-heading">${esc(i.name)}</li>`
           : `<li class="ingredient">
             <span class="ingredient-amount">${esc([i.amount, i.unit].filter(Boolean).join(' ') || '—')}</span>
-            <span class="ingredient-name">${esc(i.name)}</span>
+            <span class="ingredient-name">${esc(i.name)}${i.description ? ` <span class="ingredient-desc">(${esc(i.description)})</span>` : ''}</span>
           </li>`).join('')}
       </ul>
     </section>` : ''
