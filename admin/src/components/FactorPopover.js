@@ -1,3 +1,5 @@
+import { onClickOutside } from '../utils/html.js'
+
 const PRESETS = [
   { label: '¼',  value: 0.25  },
   { label: '⅓',  value: 0.333 },
@@ -78,15 +80,14 @@ export class FactorPopover {
     this._el.style.top  = `${position.y}px`
 
     setTimeout(() => {
-      this._dismiss = e => { if (!this._el.contains(e.target)) this.hide() }
-      document.addEventListener('mousedown', this._dismiss)
+      this._dismiss = onClickOutside(this._el, () => this.hide())
     }, 50)
   }
 
   hide() {
     this._el.classList.add('hidden')
     if (this._dismiss) {
-      document.removeEventListener('mousedown', this._dismiss)
+      this._dismiss()
       this._dismiss = null
     }
   }

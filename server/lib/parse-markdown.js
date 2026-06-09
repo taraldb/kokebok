@@ -1,5 +1,5 @@
-const { nanoid } = require('nanoid');
 const { uniqueSlug } = require('./slugify');
+const { shortId, recipeSlugFromTitle } = require('./id');
 
 /**
  * Parse a markdown recipe into a partial Recipe object.
@@ -112,7 +112,7 @@ function parseMarkdown(text) {
         }
         const content = contentLines.join(' ');
         steps.push({
-          id: nanoid(),
+          id: shortId(),
           position: steps.length,
           title: stepTitle,
           timer_seconds: 0,
@@ -123,7 +123,7 @@ function parseMarkdown(text) {
       // Paragraph style steps (no numbered list)
       if (line && !line.startsWith('#')) {
         steps.push({
-          id: nanoid(),
+          id: shortId(),
           position: steps.length,
           title: `Steg ${steps.length + 1}`,
           timer_seconds: 0,
@@ -141,11 +141,7 @@ function parseMarkdown(text) {
 
   if (!title) warnings.push('No title found (expected # H1)');
 
-  const slug = title
-    ? title.toLowerCase()
-        .replace(/[æÆ]/g, 'ae').replace(/[øØ]/g, 'o').replace(/[åÅ]/g, 'a')
-        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-    : nanoid();
+  const slug = recipeSlugFromTitle(title, new Set());
 
   return {
     recipe: {

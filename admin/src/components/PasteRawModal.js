@@ -1,3 +1,5 @@
+import { esc } from '../utils/html.js'
+
 /**
  * Modal for pasting raw recipe text (JSON/YAML/Markdown).
  * Shows preview before saving.
@@ -98,6 +100,3 @@ export class PasteRawModal {
   }
 }
 
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-}

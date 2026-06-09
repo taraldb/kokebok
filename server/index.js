@@ -1,6 +1,7 @@
 const express = require('express');
 const compression = require('compression');
 const path = require('path');
+const fs = require('fs');
 const { migrate } = require('./db/migrate');
 const { listRecipes, getRecipe, getTemplateHash, setTemplateHash } = require('./db/recipes');
 const { prerenderAll, computeTemplateHash } = require('./prerender/index');
@@ -8,11 +9,9 @@ const apiRecipes = require('./routes/api-recipes');
 const apiAdmin = require('./routes/api-admin');
 const legacy = require('./routes/legacy');
 const { noCache } = require('./middleware/cache');
-const { PUBLIC_DIR } = require('./config');
+const { PUBLIC_DIR, RECIPES_JSON_DIR } = require('./config');
 
 const { PORT = 8080 } = process.env;
-const { RECIPES_JSON_DIR } = require('./config');
-const fs = require('fs');
 
 migrate();
 
@@ -64,9 +63,7 @@ app.use('/admin', express.static(adminDistDir, { setHeaders: noCache }));
 
 // recipe-index.json served from prerendered static file
 app.get('/recipes/recipe-index.json', (req, res) => {
-  const { RECIPES_JSON_DIR } = require('./config');
-  const indexPath = require('path').join(__dirname, '../public/recipes/recipe-index.json');
-  const fs = require('fs');
+  const indexPath = path.join(__dirname, '../public/recipes/recipe-index.json');
   if (!fs.existsSync(indexPath)) {
     return res.status(404).json({ error: 'not found' });
   }

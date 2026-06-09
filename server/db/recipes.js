@@ -84,8 +84,8 @@ function upsertRecipe(r) {
   const now = Date.now();
 
   db.transaction(() => {
-    const existing = db.prepare(`SELECT id FROM recipes WHERE id = ?`).get(r.id);
-    const created_at = existing ? db.prepare(`SELECT created_at FROM recipes WHERE id = ?`).get(r.id).created_at : now;
+    const existing = db.prepare(`SELECT created_at FROM recipes WHERE id = ?`).get(r.id);
+    const created_at = existing ? existing.created_at : now;
 
     db.prepare(`
       INSERT INTO recipes (id,title,label,description,category,tags,meta,active_time,servings_base,servings_unit,servings_step,servings_min,tips,created_at,updated_at)

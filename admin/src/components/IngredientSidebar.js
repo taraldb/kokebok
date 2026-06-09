@@ -3,6 +3,7 @@
  * with Σ factor badges (green=1.0±0.02, orange=used but ≠1, grey=0).
  */
 import { makeDraggable } from '../editor/dragHandlers.js'
+import { esc } from '../utils/html.js'
 
 export class IngredientSidebar {
   /**
@@ -86,6 +87,3 @@ export class IngredientSidebar {
   }
 }
 
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-}

@@ -1,10 +1,4 @@
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
+const { esc, capitalize } = require('../lib/html-utils');
 
 /**
  * Render the recipe index page (SSR).

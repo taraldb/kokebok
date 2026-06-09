@@ -6,8 +6,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { nanoid } = require('nanoid');
 const { uniqueSlug } = require('../lib/slugify');
+const { shortId } = require('../lib/id');
 const { migrate } = require('../db/migrate');
 const { upsertRecipe, getRecipe } = require('../db/recipes');
 const { htmlToProsemirror } = require('../lib/html-to-prosemirror');
@@ -41,7 +41,7 @@ function convertRecipe(json) {
       allWarnings.push(`  [${json.id}] step "${step.title}": ${w}`);
     }
     return {
-      id: nanoid(),
+      id: shortId(),
       position: i,
       title: step.title || '',
       timer_seconds: step.timerSeconds || 0,

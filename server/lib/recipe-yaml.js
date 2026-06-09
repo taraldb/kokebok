@@ -1,7 +1,7 @@
 const yaml = require('js-yaml');
 const { docToYaml, yamlToDoc } = require('./doc-yaml');
-const { nanoid } = require('nanoid');
 const { uniqueSlug } = require('./slugify');
+const { shortId, recipeSlugFromTitle } = require('./id');
 
 /**
  * Serialize a recipe to YAML string.
@@ -59,7 +59,7 @@ function yamlToRecipe(yamlStr) {
   });
 
   const steps = (obj.steps || []).map((s, pos) => ({
-    id: s.id || nanoid(),
+    id: s.id || shortId(),
     position: pos,
     title: s.title || '',
     timer_seconds: s.timer_seconds || 0,
@@ -68,7 +68,7 @@ function yamlToRecipe(yamlStr) {
 
   const srv = obj.servings || {};
   return {
-    id: obj.id || nanoid(),
+    id: obj.id || recipeSlugFromTitle(obj.title, new Set()),
     title: obj.title || '',
     label: obj.label ?? null,
     description: obj.description ?? null,

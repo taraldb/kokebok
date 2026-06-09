@@ -1,10 +1,11 @@
 const express = require('express');
 const { z } = require('zod');
-const { nanoid } = require('nanoid');
 const { listRecipes, getRecipe, upsertRecipe, deleteRecipe } = require('../db/recipes');
 const { prerenderRecipe, prerenderIndex, removePrerender } = require('../prerender/index');
 const { writeJsonSnapshot } = require('../lib/json-snapshot');
 const { recipeToYaml, yamlToRecipe } = require('../lib/recipe-yaml');
+const { shortId, recipeSlugFromTitle } = require('../lib/id');
+const { uniqueSlug } = require('../lib/slugify');
 
 const router = express.Router();
 
@@ -43,11 +44,23 @@ const RecipeBodySchema = z.object({
 });
 
 function ensureIds(recipe) {
+  const taken = new Set();
   return {
     ...recipe,
-    ingredients: recipe.ingredients.map(i => ({ ...i, id: i.id || nanoid() })),
-    steps: recipe.steps.map(s => ({ ...s, id: s.id || nanoid() })),
+    ingredients: recipe.ingredients.map(i => {
+      const id = i.id || uniqueSlug(i.name || 'ingredient', taken);
+      taken.add(id);
+      return { ...i, id };
+    }),
+    steps: recipe.steps.map(s => ({ ...s, id: s.id || shortId() })),
   };
+}
+
+function saveAndRender(recipe) {
+  upsertRecipe(recipe);
+  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
+  prerenderRecipe(recipe.id);
+  prerenderIndex(listRecipes());
 }
 
 router.get('/', (_req, res) => {
@@ -64,14 +77,12 @@ router.post('/', (req, res) => {
   const parsed = RecipeBodySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
 
-  const id = req.body.id || nanoid();
+  const existingIds = new Set(listRecipes().map(r => r.id));
+  const id = req.body.id || recipeSlugFromTitle(parsed.data.title, existingIds);
   if (getRecipe(id)) return res.status(409).json({ error: 'already exists — use PUT' });
 
   const recipe = ensureIds({ ...parsed.data, id });
-  upsertRecipe(recipe);
-  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
-  prerenderRecipe(recipe.id);
-  prerenderIndex(listRecipes());
+  saveAndRender(recipe);
   res.status(201).json({ ok: true, id: recipe.id });
 });
 
@@ -80,10 +91,7 @@ router.put('/:id', (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues });
 
   const recipe = ensureIds({ ...parsed.data, id: req.params.id });
-  upsertRecipe(recipe);
-  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
-  prerenderRecipe(recipe.id);
-  prerenderIndex(listRecipes());
+  saveAndRender(recipe);
   res.json({ ok: true });
 });
 
@@ -112,10 +120,7 @@ router.put('/:id/yaml', express.text({ type: ['text/yaml', 'text/plain'], limit:
     return res.status(400).json({ error: `Invalid YAML: ${e.message}` });
   }
   recipe.id = req.params.id;
-  upsertRecipe(recipe);
-  writeJsonSnapshot(recipe.id, getRecipe(recipe.id));
-  prerenderRecipe(recipe.id);
-  prerenderIndex(listRecipes());
+  saveAndRender(recipe);
   res.json({ ok: true });
 });
 

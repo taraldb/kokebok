@@ -1,8 +1,5 @@
 const { formatAmount } = require('../lib/format-amount');
-
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+const { esc } = require('../lib/html-utils');
 
 /**
  * Convert a ProseMirror document to HTML for the prerendered recipe page.

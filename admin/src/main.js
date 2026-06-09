@@ -6,6 +6,7 @@ import { IngredientSidebar } from './components/IngredientSidebar.js'
 import { RawModeToggle } from './components/RawModeToggle.js'
 import { PasteRawModal } from './components/PasteRawModal.js'
 import { RecipeTable } from './components/RecipeTable.js'
+import { esc, cap } from './utils/html.js'
 
 const CATEGORIES = ['frokost','middag','dessert','tilbehør','snacks']
 
@@ -42,8 +43,6 @@ const pasteRawModal = new PasteRawModal({
 
 // ── Util ──────────────────────────────────────────────────────────────────────
 
-function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
-function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
 function genId() { return Math.random().toString(36).slice(2,10) + Math.random().toString(36).slice(2,10) }
 function parseNumeric(v) { const n = parseFloat(String(v ?? '').replace(/[^0-9.]/g, '')); return isNaN(n) ? '' : n }
 
@@ -241,16 +240,12 @@ function newRecipeForm() {
   renderForm({})
 }
 
-function renderForm(r) {
-  destroyEditors()
-  const titleText = r.id ? r.title : 'Ny oppskrift'
-  document.getElementById('form-title').textContent = titleText
-
+function buildFormHtml(r) {
   const catOptions = CATEGORIES.map(c =>
     `<option value="${c}" ${r.category === c ? 'selected' : ''}>${cap(c)}</option>`
   ).join('')
 
-  document.getElementById('form-area').innerHTML = `
+  return `
     <div class="edit-grid" id="edit-grid">
       <!-- Form column -->
       <div class="form-col" id="form-col">
@@ -398,7 +393,9 @@ function renderForm(r) {
       </div>
     </div>
   `
+}
 
+function initFormComponents(r) {
   const ingredients = r.ingredients || []
   currentIngredients = ingredients
   currentSums = {}
@@ -416,6 +413,18 @@ function renderForm(r) {
   const stepRowsEl = document.getElementById('step-rows')
   ;(r.steps || []).forEach(step => appendStepEditor(stepRowsEl, step, ingredients))
   recomputeSums()
+
+  const rawContainer = document.createElement('div')
+  rawContainer.id = 'raw-toggle-container'
+  rawContainer.style.padding = '0 28px 32px'
+  document.getElementById('form-col').appendChild(rawContainer)
+  new RawModeToggle(rawContainer, r.id || null, {
+    onSaved: () => r.id && loadRecipe(r.id),
+  })
+}
+
+function wireFormEvents(r) {
+  const stepRowsEl = document.getElementById('step-rows')
 
   document.getElementById('add-meta-btn').addEventListener('click', () =>
     document.getElementById('meta-rows').insertAdjacentHTML('beforeend', metaRowHtml()))
@@ -445,25 +454,23 @@ function renderForm(r) {
 
   wireTagEditor()
 
-  const rawContainer = document.createElement('div')
-  rawContainer.id = 'raw-toggle-container'
-  rawContainer.style.padding = '0 28px 32px'
-  document.getElementById('form-col').appendChild(rawContainer)
-  new RawModeToggle(rawContainer, r.id || null, {
-    onSaved: () => r.id && loadRecipe(r.id),
-  })
-
-  // Wire preview updates
   document.getElementById('form-col').addEventListener('input', () => updatePreview())
-  updatePreview()
 
-  // Preview collapse toggle (persisted)
   const grid = document.getElementById('edit-grid')
   if (localStorage.getItem('previewCollapsed') === '1') grid.classList.add('preview-collapsed')
   document.getElementById('preview-toggle').addEventListener('click', () => {
     const collapsed = grid.classList.toggle('preview-collapsed')
     localStorage.setItem('previewCollapsed', collapsed ? '1' : '0')
   })
+}
+
+function renderForm(r) {
+  destroyEditors()
+  document.getElementById('form-title').textContent = r.id ? r.title : 'Ny oppskrift'
+  document.getElementById('form-area').innerHTML = buildFormHtml(r)
+  initFormComponents(r)
+  wireFormEvents(r)
+  updatePreview()
 }
 
 function getCurrentIngredients() {
@@ -478,16 +485,8 @@ function getCurrentIngredients() {
   }).filter(i => i.name)
 }
 
-function appendStepEditor(container, step, ingredients) {
-  const wrapperId = `step-wrapper-${genId()}`
-  const editorId = `step-editor-${genId()}`
-  const stepNum = container.children.length + 1
-
-  const wrapper = document.createElement('div')
-  wrapper.className = 'step-card'
-  wrapper.setAttribute('data-step-wrapper', '')
-  wrapper.dataset.wrapperId = wrapperId
-  wrapper.innerHTML = `
+function buildStepCardHtml(step, editorId, stepNum) {
+  return `
     <div class="step-card-head">
       <span class="step-num">${stepNum}</span>
       <input class="step-title-input" placeholder="Tittel på steg"
@@ -516,6 +515,18 @@ function appendStepEditor(container, step, ingredients) {
       </div>
     </div>
   `
+}
+
+function appendStepEditor(container, step, ingredients) {
+  const wrapperId = `step-wrapper-${genId()}`
+  const editorId = `step-editor-${genId()}`
+  const stepNum = container.children.length + 1
+
+  const wrapper = document.createElement('div')
+  wrapper.className = 'step-card'
+  wrapper.setAttribute('data-step-wrapper', '')
+  wrapper.dataset.wrapperId = wrapperId
+  wrapper.innerHTML = buildStepCardHtml(step, editorId, stepNum)
   container.appendChild(wrapper)
 
   wrapper.querySelectorAll('[data-dir]').forEach(btn =>

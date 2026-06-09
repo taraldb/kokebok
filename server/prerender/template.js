@@ -1,9 +1,6 @@
 const { formatAmount } = require('../lib/format-amount');
 const { docToHtml } = require('./doc-to-html');
-
-function esc(s) {
-  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+const { esc, capitalize } = require('../lib/html-utils');
 
 function safeJsonInScript(obj) {
   return JSON.stringify(obj)
@@ -14,196 +11,8 @@ function safeJsonInScript(obj) {
     .replace(/<!--/g, '\\u003c!--');
 }
 
-/**
- * Render a full recipe HTML page.
- * @param {import('../types').Recipe} r
- * @returns {string}
- */
-function renderRecipePage(r) {
-  const ingMap = new Map((r.ingredients || []).map(i => [i.id, i]));
-  const servingsBase = r.servings_base ?? 1;
-  const servingsUnit = r.servings_unit ?? '';
-  const servingsStep = r.servings_step ?? 1;
-  const servingsMin  = r.servings_min  ?? 1;
-
-  const tagBadges = [
-    r.category ? `<span class="category-badge">${esc(capitalize(r.category))}</span>` : '',
-    ...(r.tags || []).map(t => `<span class="tag">${esc(t)}</span>`),
-  ].join('');
-
-  const metaItems = [
-    r.active_time != null
-      ? `\n      <div class="meta-item">\n        <span class="meta-label">Aktiv tid</span>\n        <span class="meta-value">~${r.active_time} min</span>\n      </div>`
-      : '',
-    ...(r.meta || []).map(m => {
-      const val = esc([m.value, m.unit].filter(Boolean).join(' '));
-      return `\n      <div class="meta-item">\n        <span class="meta-label">${esc(m.label)}</span>\n        <span class="meta-value">${val}</span>\n      </div>`;
-    }),
-  ].filter(Boolean).join('');
-
-  const servingsControl = r.servings_base != null ? `
-          <div class="meta-item">
-            <span class="meta-label">Antall ${esc(servingsUnit)}</span>
-            <div class="servings-control">
-              <button class="servings-btn" onclick="adjustServings(${-servingsStep})">−</button>
-              <span id="servings-display">${servingsBase} ${esc(servingsUnit)}</span>
-              <button class="servings-btn" onclick="adjustServings(${servingsStep})">+</button>
-            </div>
-          </div>` : '';
-
-  const ingredientItems = (r.ingredients || []).map(ing => {
-    const amt = ing.amount ?? null;
-    const descHtml = ing.description ? ` <span class="ingredient-desc">(${esc(ing.description)})</span>` : '';
-    // Only add data-base/data-unit when amount is known — scaling JS skips elements without these attrs
-    const dataAttrs = amt != null ? ` data-base="${esc(String(amt))}" data-unit="${esc(ing.unit || '')}"` : '';
-    const amtDisplay = amt != null ? formatAmount(amt, ing.unit) : '—';
-    return `
-        <li class="ingredient">
-          <span class="ingredient-amount"${dataAttrs}>${esc(amtDisplay)}</span>
-          <span class="ingredient-name">${esc(capitalize(ing.name))}${descHtml}</span>
-        </li>`;
-  }).join('');
-
-  const stepItems = (r.steps || []).map((step, i) => {
-    const textHtml = docToHtml(step.content_doc, r.ingredients);
-    const timerSeconds = step.timer_seconds || 0;
-    const timerHtml = timerSeconds > 0 ? `
-          <div class="timer">
-            <button class="timer-btn" onclick="startTimer(event, this, ${timerSeconds})">⏱ Start timer</button>
-            <span class="timer-display">${formatTime(timerSeconds)}</span>
-          </div>` : '';
-    return `
-        <li class="step" onclick="toggleStep(this)">
-          <button class="done-btn" onclick="toggleDone(event, this)">✓</button>
-          <span class="step-number">${i + 1}</span>
-          <div class="step-content">
-            <span class="step-title">${esc(step.title)}</span>
-            <p class="step-text">${textHtml}</p>
-            ${timerHtml}
-          </div>
-        </li>`;
-  }).join('');
-
-  const tipsHtml = (r.tips || []).length > 0 ? `
-      <section>
-        <h2 class="section-title">Tips</h2>
-        <div class="tips">
-          <ul>${(r.tips).map(t => `<li>${esc(t)}</li>`).join('')}</ul>
-        </div>
-      </section>` : '';
-
-  // Build the __RECIPE__ payload for client-side init skip
-  const recipePayload = {
-    id: r.id,
-    title: r.title,
-    servings: r.servings_base != null ? {
-      base: r.servings_base,
-      unit: r.servings_unit,
-      step: r.servings_step,
-      min: r.servings_min,
-    } : null,
-    steps: (r.steps || []).map(s => ({
-      title: s.title,
-      timerSeconds: s.timer_seconds,
-      text: docToHtml(s.content_doc, r.ingredients),
-    })),
-  };
-
-  return `<!DOCTYPE html>
-<html lang="no">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${esc(r.title)} · Kokebok</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/assets/style.css" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
-  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
-  <script>const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);<\/script>
-</head>
-<body>
-
-<nav class="nav">
-  <div class="nav-inner">
-    <a href="/" class="nav-logo"><img src="/assets/logo.png" alt="" class="nav-logo-img" />Kokebok</a>
-    <button id="theme-toggle" aria-label="Bytt tema">☾</button>
-    <a href="/admin" class="admin-nav-btn" aria-label="Admin">⚙ Admin</a>
-  </div>
-</nav>
-
-<div class="container recipe-page animate-in" id="app">
-  <header class="hero">
-    <div class="hero-top-row">
-      <a class="back-link" href="/">← Alle oppskrifter</a>
-      <div class="hero-top-actions">
-        <a href="/admin#/edit/${esc(r.id)}" class="edit-admin-btn" title="Rediger i admin" aria-label="Rediger i admin">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-          </svg>
-        </a>
-        <button class="json-copy-btn" id="json-copy-btn" onclick="copyJsonUrl('${esc(r.id)}')" title="Kopier JSON-URL for AI">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="2" x2="12" y2="5"/><circle cx="12" cy="1.5" r="1" fill="currentColor" stroke="none"/>
-            <rect x="3" y="5" width="18" height="14" rx="3"/>
-            <circle cx="9" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
-            <circle cx="15" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
-            <path d="M9 15.5h6"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-    ${(() => { const heroLabel = r.label || [r.category, (r.tags||[])[0]].filter(Boolean).join(' · '); return heroLabel ? `<p class="hero-label">${esc(heroLabel)}</p>` : ''; })()}
-    <h1>${esc(r.title)}</h1>
-    ${r.description ? `<p class="hero-desc">${esc(r.description)}</p>` : ''}
-    <div class="tag-list">${tagBadges}</div>
-    <div class="meta-row" style="margin-top:24px">
-      ${metaItems}
-      ${servingsControl}
-    </div>
-    <button class="cooking-mode-btn" onclick="enterCooking()">
-      &#x1F373; Start kokemodus
-    </button>
-  </header>
-
-  <section>
-    <h2 class="section-title">Ingredienser</h2>
-    <ul class="ingredients-list" id="ingredients">${ingredientItems}
-    </ul>
-  </section>
-
-  <section>
-    <h2 class="section-title">Fremgangsmåte</h2>
-    <ol class="steps-list">${stepItems}
-    </ol>
-  </section>
-
-  ${tipsHtml}
-
-  <footer>
-    <p>Kokebok &nbsp;·&nbsp; ${esc(r.title)}</p>
-  </footer>
-</div>
-
-<div id="cooking-overlay" class="cooking-overlay hidden">
-  <div class="cm-header">
-    <span class="cm-progress">Steg <span id="cm-cur">1</span> av <span id="cm-tot">1</span></span>
-    <button class="cm-exit" onclick="exitCooking()" aria-label="Avslutt kokemodus">✕</button>
-  </div>
-  <div class="cm-body">
-    <div class="cm-step-num" id="cm-num"></div>
-    <div class="cm-step-title" id="cm-title"></div>
-    <div class="cm-step-text" id="cm-text"></div>
-    <div class="cm-timer-row" id="cm-timer"></div>
-  </div>
-  <div class="cm-nav">
-    <button class="cm-nav-btn" id="cm-prev" onclick="cmNav(-1)">← Forrige</button>
-    <div class="cm-dots" id="cm-dots"></div>
-    <button class="cm-nav-btn cm-nav-next" id="cm-next" onclick="cmNav(1)">Neste →</button>
-  </div>
-</div>
-
-<script>window.__RECIPE__ = ${safeJsonInScript(recipePayload)};<\/script>
-<script>
+function buildClientScript(servingsBase, servingsMin, servingsUnit) {
+  return `
   const timers = {};
   let BASE_SERVINGS = ${servingsBase};
   let currentServings = ${servingsBase};
@@ -487,14 +296,202 @@ function renderRecipePage(r) {
   }
 
   init();
-<\/script>
+`;
+}
+
+/**
+ * Render a full recipe HTML page.
+ * @param {import('../types').Recipe} r
+ * @returns {string}
+ */
+function renderRecipePage(r) {
+  const ingMap = new Map((r.ingredients || []).map(i => [i.id, i]));
+  const servingsBase = r.servings_base ?? 1;
+  const servingsUnit = r.servings_unit ?? '';
+  const servingsStep = r.servings_step ?? 1;
+  const servingsMin  = r.servings_min  ?? 1;
+
+  const tagBadges = [
+    r.category ? `<span class="category-badge">${esc(capitalize(r.category))}</span>` : '',
+    ...(r.tags || []).map(t => `<span class="tag">${esc(t)}</span>`),
+  ].join('');
+
+  const metaItems = [
+    r.active_time != null
+      ? `\n      <div class="meta-item">\n        <span class="meta-label">Aktiv tid</span>\n        <span class="meta-value">~${r.active_time} min</span>\n      </div>`
+      : '',
+    ...(r.meta || []).map(m => {
+      const val = esc([m.value, m.unit].filter(Boolean).join(' '));
+      return `\n      <div class="meta-item">\n        <span class="meta-label">${esc(m.label)}</span>\n        <span class="meta-value">${val}</span>\n      </div>`;
+    }),
+  ].filter(Boolean).join('');
+
+  const servingsControl = r.servings_base != null ? `
+          <div class="meta-item">
+            <span class="meta-label">Antall ${esc(servingsUnit)}</span>
+            <div class="servings-control">
+              <button class="servings-btn" onclick="adjustServings(${-servingsStep})">−</button>
+              <span id="servings-display">${servingsBase} ${esc(servingsUnit)}</span>
+              <button class="servings-btn" onclick="adjustServings(${servingsStep})">+</button>
+            </div>
+          </div>` : '';
+
+  const ingredientItems = (r.ingredients || []).map(ing => {
+    const amt = ing.amount ?? null;
+    const descHtml = ing.description ? ` <span class="ingredient-desc">(${esc(ing.description)})</span>` : '';
+    // Only add data-base/data-unit when amount is known — scaling JS skips elements without these attrs
+    const dataAttrs = amt != null ? ` data-base="${esc(String(amt))}" data-unit="${esc(ing.unit || '')}"` : '';
+    const amtDisplay = amt != null ? formatAmount(amt, ing.unit) : '—';
+    return `
+        <li class="ingredient">
+          <span class="ingredient-amount"${dataAttrs}>${esc(amtDisplay)}</span>
+          <span class="ingredient-name">${esc(capitalize(ing.name))}${descHtml}</span>
+        </li>`;
+  }).join('');
+
+  const stepItems = (r.steps || []).map((step, i) => {
+    const textHtml = docToHtml(step.content_doc, r.ingredients);
+    const timerSeconds = step.timer_seconds || 0;
+    const timerHtml = timerSeconds > 0 ? `
+          <div class="timer">
+            <button class="timer-btn" onclick="startTimer(event, this, ${timerSeconds})">⏱ Start timer</button>
+            <span class="timer-display">${formatTime(timerSeconds)}</span>
+          </div>` : '';
+    return `
+        <li class="step" onclick="toggleStep(this)">
+          <button class="done-btn" onclick="toggleDone(event, this)">✓</button>
+          <span class="step-number">${i + 1}</span>
+          <div class="step-content">
+            <span class="step-title">${esc(step.title)}</span>
+            <p class="step-text">${textHtml}</p>
+            ${timerHtml}
+          </div>
+        </li>`;
+  }).join('');
+
+  const tipsHtml = (r.tips || []).length > 0 ? `
+      <section>
+        <h2 class="section-title">Tips</h2>
+        <div class="tips">
+          <ul>${(r.tips).map(t => `<li>${esc(t)}</li>`).join('')}</ul>
+        </div>
+      </section>` : '';
+
+  // Build the __RECIPE__ payload for client-side init skip
+  const recipePayload = {
+    id: r.id,
+    title: r.title,
+    servings: r.servings_base != null ? {
+      base: r.servings_base,
+      unit: r.servings_unit,
+      step: r.servings_step,
+      min: r.servings_min,
+    } : null,
+    steps: (r.steps || []).map(s => ({
+      title: s.title,
+      timerSeconds: s.timer_seconds,
+      text: docToHtml(s.content_doc, r.ingredients),
+    })),
+  };
+
+  return `<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${esc(r.title)} · Kokebok</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <script>const t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);<\/script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><img src="/assets/logo.png" alt="" class="nav-logo-img" />Kokebok</a>
+    <button id="theme-toggle" aria-label="Bytt tema">☾</button>
+    <a href="/admin" class="admin-nav-btn" aria-label="Admin">⚙ Admin</a>
+  </div>
+</nav>
+
+<div class="container recipe-page animate-in" id="app">
+  <header class="hero">
+    <div class="hero-top-row">
+      <a class="back-link" href="/">← Alle oppskrifter</a>
+      <div class="hero-top-actions">
+        <a href="/admin#/edit/${esc(r.id)}" class="edit-admin-btn" title="Rediger i admin" aria-label="Rediger i admin">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        </a>
+        <button class="json-copy-btn" id="json-copy-btn" onclick="copyJsonUrl('${esc(r.id)}')" title="Kopier JSON-URL for AI">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="2" x2="12" y2="5"/><circle cx="12" cy="1.5" r="1" fill="currentColor" stroke="none"/>
+            <rect x="3" y="5" width="18" height="14" rx="3"/>
+            <circle cx="9" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
+            <circle cx="15" cy="11.5" r="1.5" fill="currentColor" stroke="none"/>
+            <path d="M9 15.5h6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    ${(() => { const heroLabel = r.label || [r.category, (r.tags||[])[0]].filter(Boolean).join(' · '); return heroLabel ? `<p class="hero-label">${esc(heroLabel)}</p>` : ''; })()}
+    <h1>${esc(r.title)}</h1>
+    ${r.description ? `<p class="hero-desc">${esc(r.description)}</p>` : ''}
+    <div class="tag-list">${tagBadges}</div>
+    <div class="meta-row" style="margin-top:24px">
+      ${metaItems}
+      ${servingsControl}
+    </div>
+    <button class="cooking-mode-btn" onclick="enterCooking()">
+      &#x1F373; Start kokemodus
+    </button>
+  </header>
+
+  <section>
+    <h2 class="section-title">Ingredienser</h2>
+    <ul class="ingredients-list" id="ingredients">${ingredientItems}
+    </ul>
+  </section>
+
+  <section>
+    <h2 class="section-title">Fremgangsmåte</h2>
+    <ol class="steps-list">${stepItems}
+    </ol>
+  </section>
+
+  ${tipsHtml}
+
+  <footer>
+    <p>Kokebok &nbsp;·&nbsp; ${esc(r.title)}</p>
+  </footer>
+</div>
+
+<div id="cooking-overlay" class="cooking-overlay hidden">
+  <div class="cm-header">
+    <span class="cm-progress">Steg <span id="cm-cur">1</span> av <span id="cm-tot">1</span></span>
+    <button class="cm-exit" onclick="exitCooking()" aria-label="Avslutt kokemodus">✕</button>
+  </div>
+  <div class="cm-body">
+    <div class="cm-step-num" id="cm-num"></div>
+    <div class="cm-step-title" id="cm-title"></div>
+    <div class="cm-step-text" id="cm-text"></div>
+    <div class="cm-timer-row" id="cm-timer"></div>
+  </div>
+  <div class="cm-nav">
+    <button class="cm-nav-btn" id="cm-prev" onclick="cmNav(-1)">← Forrige</button>
+    <div class="cm-dots" id="cm-dots"></div>
+    <button class="cm-nav-btn cm-nav-next" id="cm-next" onclick="cmNav(1)">Neste →</button>
+  </div>
+</div>
+
+<script>window.__RECIPE__ = ${safeJsonInScript(recipePayload)};<\/script>
+<script>${buildClientScript(servingsBase, servingsMin, servingsUnit)}<\/script>
 <script src="/assets/theme.js"><\/script>
 </body>
 </html>`;
-}
-
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 function formatTime(s) {

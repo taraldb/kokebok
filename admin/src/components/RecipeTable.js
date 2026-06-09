@@ -1,11 +1,7 @@
 import { relativeTime, fullTimestamp } from '../utils/time.js'
+import { esc, cap } from '../utils/html.js'
 
 const CATEGORIES = ['frokost', 'middag', 'dessert', 'tilbehør', 'snacks']
-
-function esc(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s }
 
 function isDark() {
   const t = document.documentElement.getAttribute('data-theme')
