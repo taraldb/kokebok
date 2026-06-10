@@ -64,6 +64,7 @@
   line-height: 1.12;
   color: var(--brown);
   margin-bottom: 16px;
+  overflow-wrap: break-word;
 }
 
 .recipe-page .hero-desc {

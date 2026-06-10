@@ -311,6 +311,14 @@ function buildFormHtml(r) {
               <label>Enhet</label>
               <input id="f-srv-unit" value="${esc(r.servings_unit||'')}" placeholder="porsjoner" />
             </div>
+            <div class="field">
+              <label>Min. porsjoner</label>
+              <input id="f-srv-min" type="number" min="1" value="${r.servings_min??1}" placeholder="1" />
+            </div>
+            <div class="field">
+              <label>Steg (+/−)</label>
+              <input id="f-srv-step" type="number" min="1" value="${r.servings_step??1}" placeholder="1" />
+            </div>
           </div>
           <div class="dyn-list" id="meta-rows">
             ${(r.meta||[]).map(m => metaRowHtml(m.label, m.value, m.unit ?? 'min')).join('')}
