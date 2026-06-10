@@ -24,13 +24,16 @@ function recipeToYaml(r) {
       step: r.servings_step,
       min: r.servings_min,
     },
-    ingredients: (r.ingredients || []).map(i => ({
-      id: i.id,
-      amount: i.amount,
-      unit: i.unit,
-      name: i.name,
-      ...(i.description ? { description: i.description } : {}),
-    })),
+    ingredients: (r.ingredients || []).map(i => {
+      if (i.type === 'heading') return { heading: i.name };
+      return {
+        id: i.id,
+        amount: i.amount,
+        unit: i.unit,
+        name: i.name,
+        ...(i.description ? { description: i.description } : {}),
+      };
+    }),
     steps: (r.steps || []).map(s => ({
       id: s.id,
       title: s.title,
@@ -53,9 +56,14 @@ function yamlToRecipe(yamlStr) {
 
   const taken = new Set()
   const ingredients = (obj.ingredients || []).map((i, pos) => {
+    if (i.heading != null) {
+      const id = i.id || uniqueSlug(i.heading || 'section', taken);
+      taken.add(id);
+      return { id, position: pos, type: 'heading', name: i.heading, amount: null, unit: null, description: null };
+    }
     const id = i.id || uniqueSlug(i.name || '', taken)
     taken.add(id)
-    return { id, position: pos, name: i.name || '', amount: i.amount ?? null, unit: i.unit ?? null, description: i.description ?? null }
+    return { id, position: pos, type: 'ingredient', name: i.name || '', amount: i.amount ?? null, unit: i.unit ?? null, description: i.description ?? null }
   });
 
   const steps = (obj.steps || []).map((s, pos) => ({

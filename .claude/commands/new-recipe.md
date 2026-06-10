@@ -48,7 +48,8 @@ servings:
   step: 1
   min: 1
 ingredients:
-  - id: kyllingbryster      # slugified name
+  - heading: "Til kyllingen"   # optional section label — groups ingredients visually; no id/amount/unit
+  - id: kyllingbryster         # slugified name
     amount: 600
     unit: g
     name: kyllingbryster
@@ -91,4 +92,5 @@ Step `content` is plain text with optional inline formatting:
 - Omit optional fields (`label`, `description`, `meta`, `tips`) if not applicable — do not include them with empty values
 - `ingredients[].amount` must be a number or null (not a string)
 - `ingredients[].description` is optional; use for prep notes ("romtemperatur", "hakket fint") — shown in parentheses after the name on the recipe page; omit if not applicable
+- `- heading: "..."` inserts a section label between ingredients (no id, amount, or unit); use when a recipe has clearly separate ingredient groups (e.g. dough vs. filling)
 - Prefer `{{ing:...}}` refs in step content over re-stating ingredient names
